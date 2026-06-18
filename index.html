@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The People - God Simulator v10</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <header id="top-bar">
+        <div class="top-title">THE PEOPLE</div>
+        <div class="top-info">
+            <span id="time-display">Năm 1, Tháng 1, Ngày 1</span>
+            <span id="season-display" style="color:#2ecc71;">Xuân</span>
+            <span title="Dân số">👥 <span id="pop-display">0</span></span>
+            <span title="Thần lực" style="color:#f1c40f;">✨ <span id="dp-val">100</span></span>
+            <span title="Tốc độ">⏩ <span id="speed-val">1x</span></span>
+        </div>
+        <div class="top-controls">
+            <button class="icon-btn" id="btn-sound" title="Bật/Tắt âm thanh">🔇</button>
+            <div id="speed-controls">
+                <button class="speed-btn" data-speed="0">⏸</button>
+                <button class="speed-btn active" data-speed="1">1x</button>
+                <button class="speed-btn" data-speed="5">5x</button>
+                <button class="speed-btn" data-speed="10">10x</button>
+                <button class="speed-btn" data-speed="1000" style="background:#8e44ad;">MAX</button>
+            </div>
+            <div id="fps-display">60 FPS</div>
+        </div>
+    </header>
+
+    <div id="game-body">
+        <!-- Left Sidebar: Tools & Powers -->
+        <aside id="left-sidebar">
+            <div class="sidebar-section">
+                <h3>Địa Hình</h3>
+                <div class="tool-grid">
+                    <button class="tool-btn active" data-tool="dat">🟩 Đất</button>
+                    <button class="tool-btn" data-tool="nuoc">🟦 Nước</button>
+                    <button class="tool-btn" data-tool="rung">🌲 Rừng</button>
+                    <button class="tool-btn" data-tool="nui">⛰️ Núi</button>
+                    <button class="tool-btn" data-tool="xoa">❌ Xóa</button>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3>Sự Sống</h3>
+                <div class="tool-grid">
+                    <button class="tool-btn" data-tool="nguoi">🧍 Tạo người</button>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="gold-text">Quyền Năng</h3>
+                <div class="tool-grid">
+                    <button class="tool-btn god-power" data-tool="bless">✨ Ban phước</button>
+                    <button class="tool-btn god-power" data-tool="curse">💀 Nguyền rủa</button>
+                    <button class="tool-btn god-power" data-tool="heal">💖 Hồi phục</button>
+                    <button class="tool-btn god-power" data-tool="fertile">🌱 Mầu mỡ</button>
+                    <button class="tool-btn god-power" data-tool="purify">💧 Thanh tẩy</button>
+                    <button class="tool-btn god-power" data-tool="voice">🗣️ Thánh chỉ</button>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="danger-text">Thiên Tai</h3>
+                <div class="tool-grid">
+                    <button class="tool-btn" data-tool="mua">🌧️ Mưa</button>
+                    <button class="tool-btn" data-tool="set">⚡ Sét</button>
+                    <button class="tool-btn" data-tool="bao">🌪️ Bão</button>
+                    <button class="tool-btn god-power" data-tool="calmstorm">🌬️ Xua bão</button>
+                    <button class="tool-btn god-power" data-tool="plague">☣️ Dịch bệnh</button>
+                    <button class="tool-btn god-power" data-tool="volcano">🌋 Núi lửa</button>
+                    <button class="tool-btn god-power" data-tool="meteor">☄️ Thiên thạch</button>
+                    <button class="tool-btn god-power" data-tool="changeseason">🍂 Đổi mùa</button>
+                    <button class="tool-btn god-power" data-tool="freeze">❄️ Đóng băng</button>
+                    <button class="tool-btn god-power" data-tool="heat">🔥 Tỏa nhiệt</button>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3>Lưu Trữ</h3>
+                <div class="tool-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 5px;">
+                    <button id="btn-save" class="action-btn">Lưu</button>
+                    <button id="btn-load" class="action-btn">Tải</button>
+                </div>
+                <div class="tool-grid">
+                    <button id="btn-export" class="action-btn" style="background:#3498db; border-color:#2980b9;">Xuất JSON</button>
+                    <input type="file" id="file-import" class="hidden" accept=".json">
+                    <button id="btn-import" class="action-btn" style="background:#2ecc71; border-color:#27ae60;">Nhập JSON</button>
+                </div>
+            </div>
+            <div class="sidebar-section bottom-group">
+                <button id="btn-reset-cam" class="action-btn">Reset Camera</button>
+            </div>
+        </aside>
+
+        <!-- Main Game Area -->
+        <main id="main-view">
+            <div id="debug-panel" class="hidden">
+                <h4>Debug Info</h4>
+                <p>FPS: <span id="dbg-fps"></span> | Time: <span id="dbg-time"></span>x</p>
+                <p>NPCs: <span id="dbg-npcs"></span> | Houses: <span id="dbg-houses"></span></p>
+                <p>Tribes: <span id="dbg-tribes"></span> | Kingdoms: <span id="dbg-kingdoms"></span></p>
+                <p>Effects: <span id="dbg-effects"></span> | Particles: <span id="dbg-particles"></span></p>
+                <p>Cam: X:<span id="dbg-camx"></span> Y:<span id="dbg-camy"></span> Z:<span id="dbg-camz"></span></p>
+                <p>Vis Tiles: <span id="dbg-vistiles"></span></p>
+                <p>Upd: <span id="dbg-updtime"></span>ms | Ren: <span id="dbg-rentime"></span>ms</p>
+            </div>
+            <div id="notification-area"></div>
+            
+            <canvas id="game-canvas"></canvas>
+            
+            <div id="minimap-container">
+                <canvas id="minimap" width="200" height="120"></canvas>
+                <div id="minimap-viewport"></div>
+            </div>
+
+            <!-- Voice Menu -->
+            <div id="voice-menu" class="hidden">
+                <h3>Thánh chỉ cho <span id="voice-npc-name"></span></h3>
+                <button class="voice-cmd" data-cmd="move">Đi đến vị trí</button>
+                <button class="voice-cmd" data-cmd="wood">Thu thập gỗ</button>
+                <button class="voice-cmd" data-cmd="build">Xây nhà ngay</button>
+                <button class="voice-cmd" data-cmd="pray">Cầu nguyện</button>
+                <button class="voice-cmd" data-cmd="leave">Rời bỏ bộ lạc</button>
+                <button class="voice-cmd" data-cmd="war" style="color:#e74c3c;">Khai chiến</button>
+                <button class="voice-cmd" data-cmd="peace" style="color:#3498db;">Cầu hòa</button>
+                <button class="voice-cmd" data-cmd="rebel" style="color:#e67e22;">Đảo chính</button>
+                <button id="close-voice">Hủy bỏ</button>
+            </div>
+        </main>
+
+        <!-- Right Sidebar: Info & Management -->
+        <aside id="right-sidebar">
+            <div class="tab-headers">
+                <button class="tab-btn active" data-target="tab-inspect" title="Tra cứu">🔎</button>
+                <button class="tab-btn" data-target="tab-people" title="Cư dân">🧍</button>
+                <button class="tab-btn" data-target="tab-tribe" title="Bộ lạc">⛺</button>
+                <button class="tab-btn" data-target="tab-kingdom" title="Vương quốc">👑</button>
+                <button class="tab-btn" data-target="tab-religion" title="Tôn giáo">🙏</button>
+                <button class="tab-btn" data-target="tab-tech" title="Công nghệ">💡</button>
+                <button class="tab-btn" data-target="tab-env" title="Môi trường">🌍</button>
+                <button class="tab-btn" data-target="tab-history" title="Sử ký">📜</button>
+                <button class="tab-btn" data-target="tab-god" title="Thần thánh">✨</button>
+                <button class="tab-btn" data-target="tab-settings" title="Cài đặt">⚙️</button>
+            </div>
+
+            <div class="tab-content">
+                <!-- Inspect Tab -->
+                <div id="tab-inspect" class="tab-pane active">
+                    <div id="inspect-none" class="empty-state">Nhấp vào một đối tượng trên bản đồ để tra cứu.</div>
+                    <div id="inspect-content" class="hidden"></div>
+                </div>
+
+                <!-- People Tab -->
+                <div id="tab-people" class="tab-pane">
+                    <input type="text" id="search-npc" placeholder="Tìm kiếm tên NPC..." class="ui-input">
+                    <div class="filter-group" style="display:flex;gap:5px;margin-bottom:5px;">
+                        <select id="filter-npc-alive" class="ui-select"><option value="All">Tất cả</option><option value="Alive" selected>Sống</option><option value="Dead">Chết</option></select>
+                        <select id="filter-npc-job" class="ui-select"><option value="All">Nghề</option></select>
+                    </div>
+                    <div class="filter-group" style="display:flex;gap:5px;margin-bottom:5px;">
+                        <select id="filter-npc-tribe" class="ui-select"><option value="All">Bộ lạc</option></select>
+                        <select id="filter-npc-faith" class="ui-select"><option value="All">Niềm tin</option><option value="High">Sùng đạo/Cuồng tín</option><option value="Low">Vô thần/Nghi ngờ</option></select>
+                    </div>
+                    <label class="setting-row"><input type="checkbox" id="filter-npc-health"> Máu thấp (&lt;50)</label>
+                    <label class="setting-row"><input type="checkbox" id="filter-npc-legendary"> Huyền Thoại</label>
+                    <p class="small-text">Click vào NPC để di chuyển camera tới.</p>
+                    <ul id="people-list" class="list-view" style="flex:1;"></ul>
+                </div>
+
+                <!-- Tribe Tab -->
+                <div id="tab-tribe" class="tab-pane">
+                    <h3 class="gold-text">Các Bộ Lạc</h3>
+                    <ul id="tribe-list" class="list-view" style="flex:1;"></ul>
+                </div>
+
+                <!-- Kingdom Tab -->
+                <div id="tab-kingdom" class="tab-pane">
+                    <h3 class="gold-text">Các Vương Quốc</h3>
+                    <div class="accordion" style="margin-bottom:10px;">
+                        <div class="acc-header">Thống kê Toàn Cầu</div>
+                        <div class="acc-content">
+                            <p><strong>Tổng Dân số:</strong> <span id="civ-pop"></span></p>
+                            <p><strong>Tổng Kinh tế:</strong> <span id="civ-eco"></span></p>
+                            <p><strong>Tổng Quân sự:</strong> <span id="civ-mil"></span></p>
+                        </div>
+                    </div>
+                    <ul id="kingdom-list" class="list-view" style="flex:1;"></ul>
+                </div>
+
+                <!-- Religion Tab -->
+                <div id="tab-religion" class="tab-pane">
+                    <h3 class="gold-text">Các Tôn Giáo</h3>
+                    <ul id="religion-list" class="list-view" style="flex:1;"></ul>
+                </div>
+
+                <!-- Tech Tab -->
+                <div id="tab-tech" class="tab-pane">
+                    <h3 class="blue-text">Công Nghệ Toàn Cầu</h3>
+                    <p><strong>Nghiên cứu trung bình:</strong> <span id="tech-avg-pts"></span></p>
+                    <ul id="global-tech-list" class="list-view" style="flex:1;"></ul>
+                </div>
+
+                <!-- Env Tab -->
+                <div id="tab-env" class="tab-pane">
+                    <div id="env-global">
+                        <p><strong>Mùa hiện tại:</strong> <span id="env-season" class="green-text"></span></p>
+                        <p><strong>Nhiệt độ TB:</strong> <span id="env-avg-temp"></span>°C</p>
+                        <p><strong>Độ ẩm TB:</strong> <span id="env-avg-hum"></span>%</p>
+                        <p><strong>Phì nhiêu TB:</strong> <span id="env-avg-fert"></span>%</p>
+                        <p><strong>Ô nhiễm TB:</strong> <span id="env-avg-pol"></span>%</p>
+                        <hr class="separator">
+                        <p><strong>Thiên tai đang hoạt động:</strong></p>
+                        <ul id="env-disasters" class="list-view"></ul>
+                    </div>
+                </div>
+
+                <!-- History Tab -->
+                <div id="tab-history" class="tab-pane">
+                    <h3 class="gold-text">Sử Ký Thế Giới</h3>
+                    <div class="filter-group" style="display:flex;gap:5px;margin-bottom:10px;">
+                        <button id="btn-hist-events" class="hist-filter active">Sự kiện</button>
+                        <button id="btn-hist-legends" class="hist-filter">Huyền Thoại</button>
+                        <button id="btn-hist-endings" class="hist-filter">Endings</button>
+                    </div>
+                    <div id="hist-view-events" style="display:flex;flex-direction:column;flex:1;">
+                        <div class="filter-group" style="display:flex;gap:5px;margin-bottom:5px;">
+                            <select id="hist-filter-type" class="ui-select"><option value="All">Tất cả Loại</option>
+                                <option value="Birth">Sinh ra</option><option value="Death">Qua đời</option><option value="War">Chiến tranh</option>
+                                <option value="Peace">Hòa bình</option><option value="Religion">Tôn giáo</option><option value="Kingdom">Vương quốc</option>
+                                <option value="Disaster">Thiên tai</option><option value="Technology">Công nghệ</option><option value="Miracle">Phép màu</option>
+                                <option value="Betrayal">Phản bội</option><option value="Discovery">Khám phá</option><option value="Ending">Ending</option>
+                            </select>
+                            <select id="hist-filter-importance" class="ui-select"><option value="All">Mọi Mức Độ</option><option value="Important">Quan trọng</option><option value="Historic">Lịch sử</option><option value="Legendary">Huyền thoại</option></select>
+                        </div>
+                        <ul id="world-history-list" class="history-timeline"></ul>
+                    </div>
+                    <div id="hist-view-legends" class="hidden" style="flex:1;display:flex;flex-direction:column;"><ul id="legendary-list" class="legendary-timeline"></ul></div>
+                    <div id="hist-view-endings" class="hidden">
+                        <h4>Tiến độ Kết thúc Thế giới:</h4>
+                        <div id="ending-progress-container"></div>
+                    </div>
+                </div>
+
+                <!-- God Tab -->
+                <div id="tab-god" class="tab-pane">
+                    <h3 class="gold-text">Uy Quyền Thần Thánh</h3>
+                    <p><strong>Danh tiếng:</strong> <span id="god-rep"></span></p>
+                    <p><strong>Tôn sùng:</strong> <span id="god-mercy"></span></p>
+                    <p><strong>Khiếp sợ:</strong> <span id="god-fear"></span></p>
+                    <p><strong>Phép màu:</strong> <span id="god-miracles"></span></p>
+                    <p><strong>Thảm họa:</strong> <span id="god-disasters"></span></p>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="tab-settings" class="tab-pane">
+                    <h3 class="gold-text" style="margin-bottom: 10px;">Cài Đặt</h3>
+                    <label class="setting-row"><input type="checkbox" id="set-grid"> Hiện lưới (Grid)</label>
+                    <label class="setting-row"><input type="checkbox" id="set-names" checked> Hiện tên/icon</label>
+                    <label class="setting-row"><input type="checkbox" id="set-territory" checked> Hiện lãnh thổ</label>
+                    <label class="setting-row"><input type="checkbox" id="set-effects" checked> Hiện hiệu ứng (Effects)</label>
+                    <label class="setting-row"><input type="checkbox" id="set-pause-ending" checked> Dừng khi Ending</label>
+                    <label class="setting-row"><input type="checkbox" id="set-autosave" checked> Tự động lưu (1 phút)</label>
+                    <label class="setting-row"><input type="checkbox" id="set-sound"> Âm thanh (Console log)</label>
+                    <label class="setting-row"><input type="checkbox" id="set-debug"> Hiện Debug Panel</label>
+                    
+                    <div class="setting-row" style="margin-top: 10px;">
+                        <span>Chất lượng Đồ họa:</span>
+                        <select id="set-graphics" class="ui-select" style="width:100px;">
+                            <option value="Low">Thấp</option>
+                            <option value="Medium">Trung bình</option>
+                            <option value="High" selected>Cao</option>
+                        </select>
+                    </div>
+
+                    <p class="small-text" style="margin-top:20px;">Lưu tự động lần cuối: <span id="last-autosave-time" style="color:#bdc3c7;">Chưa có</span></p>
+                    <p class="small-text">Sử dụng chuột phải để kéo map, lăn chuột để thu phóng.</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Ending Modal -->
+    <div id="ending-modal" class="hidden">
+        <div class="ending-content">
+            <h1 id="end-title"></h1>
+            <p id="end-desc"></p>
+            <div class="end-stats">
+                <p><strong>Năm tồn tại:</strong> <span id="end-years"></span></p>
+                <p><strong>Dân số cuối:</strong> <span id="end-pop"></span></p>
+                <p><strong>Vương quốc mạnh nhất:</strong> <span id="end-kd"></span></p>
+                <p><strong>Tôn giáo lớn nhất:</strong> <span id="end-rel"></span></p>
+                <p><strong>Huyền thoại:</strong> <span id="end-legends"></span></p>
+            </div>
+            <div style="margin-top: 20px;">
+                <button id="btn-continue-obs" class="action-btn">Tiếp tục theo dõi</button>
+                <button id="btn-restart-world" class="action-btn" style="background:#e74c3c;">Khởi tạo lại</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

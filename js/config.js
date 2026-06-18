@@ -1,0 +1,14 @@
+export const TILE_SIZE = 16;
+export const COLS = 200;
+export const ROWS = 120;
+export const WORLD_WIDTH = COLS * TILE_SIZE;
+export const WORLD_HEIGHT = ROWS * TILE_SIZE;
+export const TERRAIN = { DAT: 0, NUOC: 1, RUNG: 2, NUI: 3 };
+export const COLORS = { [TERRAIN.DAT]: '#2ecc71', [TERRAIN.NUOC]: '#3498db', [TERRAIN.RUNG]: '#27ae60', [TERRAIN.NUI]: '#7f8c8d' };
+export const TRIBE_COLORS = ['#e74c3c', '#9b59b6', '#3498db', '#1abc9c', '#f1c40f', '#e67e22', '#ecf0f1', '#ff9ff3', '#00d2d3'];
+export const SPATIAL_CHUNK = 10;
+export const START_YEAR = 1;
+export const MAX_LOGS = 100;
+export const SAVE_KEY = 'thePeopleSaveV11';
+export const SAVE_VERSION = 11;
+export const GAME_SPEEDS = { PAUSE: 0, NORMAL: 1, FAST: 5, VFAST: 10, MAX: 1000 };
