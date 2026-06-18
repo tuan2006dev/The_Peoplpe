@@ -75,19 +75,27 @@ export function draw() {
             ctx.fillStyle = patterns[tile] || COLORS[tile];
             
             if (tile === TERRAIN.NUOC) {
-                ctx.save();
-                ctx.translate(x*TILE_SIZE, y*TILE_SIZE);
-                let offset = Math.sin(state.time.frames * 0.1 + x + y) * 2;
-                ctx.translate(offset, 0);
-                ctx.fillRect(-offset, 0, TILE_SIZE, TILE_SIZE);
-                ctx.restore();
+                if (state.camera.zoom > 0.5) {
+                    ctx.save();
+                    ctx.translate(x*TILE_SIZE, y*TILE_SIZE);
+                    let offset = Math.sin(state.time.frames * 0.1 + x + y) * 2;
+                    ctx.translate(offset, 0);
+                    ctx.fillRect(-offset, 0, TILE_SIZE, TILE_SIZE);
+                    ctx.restore();
+                } else {
+                    ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
             } else if (tile === TERRAIN.RUNG) {
-                ctx.save();
-                ctx.translate(x*TILE_SIZE, y*TILE_SIZE);
-                let skew = Math.sin(state.time.frames * 0.05 + x) * 0.1;
-                ctx.transform(1, 0, skew, 1, 0, 0);
-                ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
-                ctx.restore();
+                if (state.camera.zoom > 0.5) {
+                    ctx.save();
+                    ctx.translate(x*TILE_SIZE, y*TILE_SIZE);
+                    let skew = Math.sin(state.time.frames * 0.05 + x) * 0.1;
+                    ctx.transform(1, 0, skew, 1, 0, 0);
+                    ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+                    ctx.restore();
+                } else {
+                    ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
             } else {
                 ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 if (tile === TERRAIN.NUI) {
@@ -293,6 +301,22 @@ export function draw() {
             if (e.type === 'plague') { ctx.fillStyle = 'rgba(155, 89, 182, 0.4)'; ctx.beginPath(); ctx.arc(e.x*TILE_SIZE, e.y*TILE_SIZE, e.radius, 0, Math.PI*2); ctx.fill(); }
             if (e.type === 'set' && Math.random()<0.2) { ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillRect(e.x*TILE_SIZE-e.radius, e.y*TILE_SIZE-e.radius, e.radius*2, e.radius*2); }
         });
+    }
+
+    // Draw Brush Preview
+    if (state.currentTool && ['dat', 'nuoc', 'rung', 'nui', 'cat', 'tuyet', 'damlay', 'xoa'].includes(state.currentTool)) {
+        if (state.hoverX >= 0 && state.hoverX < COLS && state.hoverY >= 0 && state.hoverY < ROWS) {
+            let brushSize = parseInt(document.getElementById('brush-size') ? document.getElementById('brush-size').value : 1);
+            ctx.strokeStyle = state.currentTool === 'xoa' ? 'rgba(231, 76, 60, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 1;
+            for(let i = -Math.floor(brushSize/2); i <= Math.floor(brushSize/2); i++) {
+                for(let j = -Math.floor(brushSize/2); j <= Math.floor(brushSize/2); j++) {
+                    if (Math.hypot(i, j) <= brushSize/2) {
+                        ctx.strokeRect((state.hoverX + i) * TILE_SIZE, (state.hoverY + j) * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+        }
     }
 
     ctx.restore();

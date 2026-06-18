@@ -18,12 +18,23 @@ import { centerCamera } from './camera.js';
 
 function resizeCanvas() {
     let mainView = document.getElementById('main-view');
+    
+    let centerWorldX = (canvas.width / 2 - state.camera.x) / state.camera.zoom;
+    let centerWorldY = (canvas.height / 2 - state.camera.y) / state.camera.zoom;
+    
     canvas.width = mainView.clientWidth;
     canvas.height = mainView.clientHeight;
+    
+    if (!isNaN(centerWorldX) && !isNaN(centerWorldY) && canvas.width > 0) {
+        state.camera.x = canvas.width / 2 - centerWorldX * state.camera.zoom;
+        state.camera.y = canvas.height / 2 - centerWorldY * state.camera.zoom;
+    }
 }
 
 function init() {
     resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+    let mainView = document.getElementById('main-view');
+    if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(mainView);
     createTextures();
     
     for (let x=0; x<COLS; x++) { 

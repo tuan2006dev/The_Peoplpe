@@ -194,8 +194,10 @@
                 <button class="tab-btn" data-target="tab-religion" title="Tôn giáo">Tôn Giáo</button>
                 <button class="tab-btn" data-target="tab-tech" title="Công nghệ">K.Học</button>
                 <button class="tab-btn" data-target="tab-env" title="Môi trường">T.Tiết</button>
+                <button class="tab-btn" data-target="tab-story" title="Câu chuyện">C.Chuyện</button>
                 <button class="tab-btn" data-target="tab-history" title="Sử ký">Sử Ký</button>
                 <button class="tab-btn" data-target="tab-god" title="Thần thánh">Thần</button>
+                <button class="tab-btn" data-target="tab-help" title="Hướng dẫn">H.Dẫn</button>
                 <button class="tab-btn" data-target="tab-settings" title="Cài đặt">Cài Đặt</button>
             </div>
 
@@ -270,6 +272,32 @@
                     </div>
                 </div>
 
+                <!-- Story Tab -->
+                <div id="tab-story" class="tab-pane">
+                    <h3 class="gold-text">Story Director AI</h3>
+                    
+                    <div style="background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;">
+                        <h4>World Drama Score: <span id="drama-score-val">0</span>/100</h4>
+                        <div style="width:100%; height:10px; background:#34495e; border-radius:5px; margin-top:5px;">
+                            <div id="drama-score-bar" style="height:10px; background:#2ecc71; border-radius:5px; width:0%;"></div>
+                        </div>
+                        <p id="drama-score-desc" style="font-size:12px; margin-top:5px; color:#bdc3c7;">Quá yên bình</p>
+                    </div>
+
+                    <div class="accordion" style="margin-bottom:10px;">
+                        <div class="acc-header">🗞️ The People Times</div>
+                        <div class="acc-content" style="display:block;">
+                            <ul id="newspaper-list" class="list-view" style="max-height:200px; overflow-y:auto; background:#fdf5e6; color:#2c3e50; padding:10px; font-family:'Georgia', serif;"></ul>
+                        </div>
+                    </div>
+
+                    <h4 class="blue-text">Active Storylines</h4>
+                    <ul id="active-storylines-list" class="list-view" style="max-height:150px; overflow-y:auto; flex:none;"></ul>
+                    
+                    <h4 class="gold-text" style="margin-top:10px;">Legendary Characters</h4>
+                    <ul id="story-legends-list" class="list-view" style="max-height:150px; overflow-y:auto; flex:none;"></ul>
+                </div>
+
                 <!-- History Tab -->
                 <div id="tab-history" class="tab-pane">
                     <h3 class="gold-text">Sử Ký Thế Giới</h3>
@@ -297,14 +325,74 @@
                     </div>
                 </div>
 
-                <!-- God Tab -->
-                <div id="tab-god" class="tab-pane">
-                    <h3 class="gold-text">Uy Quyền Thần Thánh</h3>
-                    <p><strong>Danh tiếng:</strong> <span id="god-rep"></span></p>
-                    <p><strong>Tôn sùng:</strong> <span id="god-mercy"></span></p>
-                    <p><strong>Khiếp sợ:</strong> <span id="god-fear"></span></p>
-                    <p><strong>Phép màu:</strong> <span id="god-miracles"></span></p>
-                    <p><strong>Thảm họa:</strong> <span id="god-disasters"></span></p>
+                </div>
+
+                <!-- Help/Tutorial Tab -->
+                <div id="tab-help" class="tab-pane">
+                    <h3 class="gold-text">Hướng Dẫn Tân Thủ</h3>
+                    <div style="max-height: calc(100vh - 120px); overflow-y: auto; padding-right: 5px; font-size: 12px; line-height: 1.5; color: #ecf0f1;">
+                        
+                        <div class="accordion" style="margin-bottom:10px;">
+                            <div class="acc-header">🎮 Thao Tác Cơ Bản</div>
+                            <div class="acc-content" style="display:block;">
+                                <ul>
+                                    <li><b>Di chuyển Camera:</b> Chuột phải + Kéo, hoặc nhấn chuột giữa + Kéo, hoặc dùng phím <code>W A S D</code>.</li>
+                                    <li><b>Thu phóng (Zoom):</b> Lăn chuột (Cuộn lên/xuống).</li>
+                                    <li><b>Tra cứu:</b> Chuột trái vào bất kỳ vật thể (NPC, Nhà, Cây, Thức ăn) để xem thông tin chi tiết ở tab "Tra Cứu".</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="accordion" style="margin-bottom:10px;">
+                            <div class="acc-header">🌍 Quy Luật Thế Giới</div>
+                            <div class="acc-content">
+                                <ul>
+                                    <li><b>Tự Sinh Tồn:</b> Cư dân (NPC) có AI tự động hoàn toàn. Bạn không cần (và không thể) điều khiển trực tiếp từng người, trừ khi dùng "Nhập hồn".</li>
+                                    <li><b>Nhu cầu:</b> NPC biết đói, mệt và sợ hãi. Họ sẽ tự tìm thức ăn, xây nhà và ngủ nghỉ.</li>
+                                    <li><b>Lập Bộ Lạc:</b> Những người lang thang sẽ tự chặt gỗ dựng lều. Khi có đủ 4 túp lều ở gần nhau và có ít nhất 5 người, một Bộ Lạc mới sẽ được khai sinh!</li>
+                                    <li><b>Quốc Gia & Chiến Tranh:</b> Bộ lạc lớn sẽ tiến hóa thành Vương Quốc, nghiên cứu công nghệ, lập quân đội và khai chiến mở rộng lãnh thổ.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="accordion" style="margin-bottom:10px;">
+                            <div class="acc-header">✨ Quyền Năng Của Thần</div>
+                            <div class="acc-content">
+                                <ul>
+                                    <li><b>Địa Hình:</b> Bạn có thể tạo Đất, Nước, Rừng, Núi bằng các công cụ bên tay trái.</li>
+                                    <li><b>Phép Màu:</b> Ban phước (tăng chỉ số/chữa bệnh) hoặc Nguyền rủa (giết chóc) sẽ tiêu tốn <i>Thần lực</i>. Thần lực tự hồi phục theo thời gian.</li>
+                                    <li><b>Thánh Chỉ (Giọng nói của Thần):</b> Dùng công cụ "Thánh chỉ", click vào NPC để ban lệnh (Xây nhà, Khai chiến, Cầu hòa, Đảo chính). Họ có thể nghe hoặc cãi lệnh tùy thuộc vào điểm Niềm Tin.</li>
+                                    <li><b>Thiên Tai:</b> Gây bão, dịch bệnh, núi lửa để trừng phạt hoặc định hình lại thế giới.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="accordion" style="margin-bottom:10px;">
+                            <div class="acc-header">👻 Chế Độ Nhập Hồn (Possession)</div>
+                            <div class="acc-content">
+                                <ul>
+                                    <li>Mở tab "Tra Cứu", chọn 1 NPC và bấm nút <b>"Nhập Hồn"</b>. Bạn sẽ trực tiếp điều khiển NPC này!</li>
+                                    <li>Dùng <code>W A S D</code> để di chuyển. Chuột phải để ra lệnh đi tới.</li>
+                                    <li>Nhấn <code>E</code> để tương tác (Nhặt đồ, Lấy cắp, Trò chuyện).</li>
+                                    <li>Nhấn <code>Q</code> để tấn công hoặc thực hiện hành động nhanh.</li>
+                                    <li>Nhấn <code>ESC</code> để thoát thể xác và trở về làm Thần.</li>
+                                    <li><i>Bí mật:</i> Nếu bạn nhập hồn nhiều lần, NPC có thể nhận ra sự hiện diện của Thần và thức tỉnh đặc điểm "Nhà Tiên Tri".</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="accordion" style="margin-bottom:10px;">
+                            <div class="acc-header">🎭 Hệ Thống Story Director</div>
+                            <div class="acc-content">
+                                <ul>
+                                    <li>Game có một Đạo Diễn AI ngầm theo dõi thế giới. Nếu thế giới quá yên bình, AI sẽ tự động tạo drama (Phản bội, Ám sát, Dịch bệnh).</li>
+                                    <li>Cập nhật tin tức mỗi tháng tại báo <b>The People Times</b> ở tab Câu Chuyện.</li>
+                                    <li>AI thỉnh thoảng sẽ chọn ra những <b>Anh Hùng Huyền Thoại</b> hoặc ban cho NPC số phận đặc biệt. Hãy theo dõi hành trình của họ!</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
                 <!-- Settings Tab -->

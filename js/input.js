@@ -66,6 +66,9 @@ export function setupInput() {
     }
     
     window.addEventListener('mousemove', e => {
+        let { x, y } = getWorldPos(e);
+        state.hoverX = x; state.hoverY = y;
+
         if (state.isCameraDragging) {
             let dx = e.clientX - state.camDragStartX;
             let dy = e.clientY - state.camDragStartY;
@@ -96,7 +99,7 @@ export function setupInput() {
         let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
         state.camera.zoom *= zoomFactor;
         
-        if (state.camera.zoom < 0.2) state.camera.zoom = 0.2;
+        if (state.camera.zoom < 0.3) state.camera.zoom = 0.3;
         if (state.camera.zoom > 3) state.camera.zoom = 3;
         
         state.camera.x = mouseX - worldX * state.camera.zoom;

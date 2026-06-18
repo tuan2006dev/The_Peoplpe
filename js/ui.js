@@ -1,5 +1,5 @@
 import { state } from './gameState.js';
-import { STATES_TEXT } from './data/constants.js';
+import { STATES_TEXT, STATES } from './data/constants.js';
 import { centerCamera } from './camera.js';
 import { TILE_SIZE } from './config.js';
 import { saveGame, loadSaveData, getSaveData } from './saveLoad.js';
@@ -155,7 +155,7 @@ export function inspectObject(tx, ty, wx, wy) {
         found = np; 
         desc = `<b>${np.name}</b> (Tuổi: ${Math.floor(np.age)}) ${np.favorite ? '⭐' : ''}<br>
                 Chủng tộc: ${np.race} | Nghề: ${np.job}<br>
-                Đặc điểm: ${np.traits.join(', ')}<br>
+                Đặc điểm: ${np.traits ? np.traits.join(', ') : 'Không'}<br>
                 Máu: ${Math.floor(np.health)}/100 | Năng lượng: ${Math.floor(np.energy)}<br>
                 Trạng thái: ${STATES_TEXT[np.state]||np.state}<br>
                 Tâm trạng: ${np.mood} | Hạnh phúc: ${Math.floor(np.happiness)}<br>
@@ -183,11 +183,26 @@ export function inspectObject(tx, ty, wx, wy) {
         none.classList.add('hidden'); content.classList.remove('hidden');
         if (!found) {
             let territoryStr = "";
-            let t = state.tribes.find(tr => Math.hypot(tr.x - tx, tr.y - ty) <= tr.radius);
-            if (t) territoryStr = `<br>Lãnh thổ: Bộ lạc ${t.name}`;
-            let k = state.kingdoms.find(kg => kg.territory && kg.territory.some(pt=>pt.x===tx&&pt.y===ty));
-            if (k) territoryStr = `<br>Lãnh thổ: Vương quốc ${k.name}`;
-            desc = `<b>Ô Đất (${tx}, ${ty})</b><br>Biome: ${state.envGrid[tx][ty].biome}${territoryStr}<br>Nhiệt độ: ${Math.floor(state.envGrid[tx][ty].temperature)}°C<br>Độ ẩm: ${Math.floor(state.envGrid[tx][ty].humidity)}%`;
+            if (state.territoryGrid && state.territoryGrid[tx] && state.territoryGrid[tx][ty]) {
+                let tId = state.territoryGrid[tx][ty];
+                let t = state.tribes.find(tr => tr.id === tId);
+                if (t) {
+                    let leader = state.npcs.find(n => n.id === t.leaderId);
+                    territoryStr = `<hr style="border-color:#485460;margin:5px 0;">
+                    <b style="color:${t.color};">Bộ lạc ${t.name}</b><br>
+                    Cấp độ: ${t.level}<br>
+                    Dân số: ${t.population} người<br>
+                    Lãnh đạo: ${leader ? leader.name : 'Không có'}<br>
+                    Kho: 🪵 ${Math.floor(t.woodStorage)} | 🥩 ${Math.floor(t.foodStorage)}<br>
+                    Điểm: 💡 ${t.researchPoints} | 🎭 ${t.culturePoints}`;
+                    
+                    if (t.kingdomId) {
+                        let k = state.kingdoms.find(kg => kg.id === t.kingdomId);
+                        if (k) territoryStr += `<br>Vương quốc: <b style="color:${k.color};">${k.name}</b>`;
+                    }
+                }
+            }
+            desc = `<b>Ô Đất (${tx}, ${ty})</b><br>Biome: ${state.envGrid[tx][ty].biome}<br>Nhiệt độ: ${Math.floor(state.envGrid[tx][ty].temperature)}°C<br>Độ ẩm: ${Math.floor(state.envGrid[tx][ty].humidity)}%${territoryStr}`;
         }
         content.innerHTML = desc;
     } else {
@@ -275,13 +290,36 @@ export function updateUITabs() {
     
     if (document.getElementById('tab-tribe').classList.contains('active')) {
         let list = document.getElementById('tribe-list');
-        list.innerHTML = state.tribes.map(t => `<li>${t.name} - Pop: ${t.population}</li>`).join('');
+        list.innerHTML = state.tribes.map(t => `<li style="cursor:pointer" onclick="centerCamera(${t.x*TILE_SIZE},${t.y*TILE_SIZE}); inspectObject(${t.x},${t.y},${t.x},${t.y})"><span style="color:${t.color}">■</span> ${t.name} - Dân số: ${t.population}</li>`).join('');
     }
     
     if (document.getElementById('tab-kingdom').classList.contains('active')) {
         document.getElementById('civ-pop').innerText = state.npcs.length;
         let list = document.getElementById('kingdom-list');
-        list.innerHTML = state.kingdoms.map(k => `<li><span style="color:${k.color}">■</span> ${k.name} - Pop: ${k.population}</li>`).join('');
+        list.innerHTML = state.kingdoms.map(k => `<li style="cursor:pointer" onclick="centerCamera(${k.capitalX*TILE_SIZE},${k.capitalY*TILE_SIZE}); inspectObject(${k.capitalX},${k.capitalY},${k.capitalX},${k.capitalY})"><span style="color:${k.color}">■</span> ${k.name} - Dân số: ${k.population}</li>`).join('');
+    }
+    
+    if (document.getElementById('tab-story').classList.contains('active')) {
+        let score = state.worldDramaScore || 0;
+        document.getElementById('drama-score-val').innerText = score;
+        let bar = document.getElementById('drama-score-bar');
+        bar.style.width = score + '%';
+        let desc = "Quá yên bình";
+        bar.style.background = "#2ecc71";
+        if (score > 20) { desc = "Lý tưởng"; bar.style.background = "#3498db"; }
+        if (score > 60) { desc = "Căng thẳng"; bar.style.background = "#e67e22"; }
+        if (score > 80) { desc = "Hỗn loạn"; bar.style.background = "#e74c3c"; }
+        document.getElementById('drama-score-desc').innerText = desc;
+        
+        let newsList = document.getElementById('newspaper-list');
+        newsList.innerHTML = (state.newspaperArticles || []).map(a => `<li style="margin-bottom:5px; border-bottom:1px dashed #ccc; padding-bottom:5px;"><b>Năm ${a.year}, Th.${a.month}: ${a.title}</b><br><i style="font-size:11px">${a.content}</i></li>`).join('');
+        
+        let eventsList = document.getElementById('active-storylines-list');
+        eventsList.innerHTML = (state.storyEvents || []).slice().reverse().map(e => `<li><b style="color:#3498db">${e.title}</b> [${e.status}]<br><span style="font-size:11px; color:#bdc3c7">${e.description}</span></li>`).join('');
+        
+        let legendsList = document.getElementById('story-legends-list');
+        let legends = state.npcs.filter(n => n.traits && (n.traits.includes('chosenByFate') || n.traits.includes('heroic') || n.traits.includes('genius')) || (n.lifeStory && n.lifeStory.length > 0));
+        legendsList.innerHTML = legends.map(n => `<li style="cursor:pointer" onclick="centerCamera(${n.x*TILE_SIZE},${n.y*TILE_SIZE}); inspectObject(${n.x},${n.y},${n.x},${n.y})"><b class="gold-text">${n.name}</b> (${n.job})<br><span style="font-size:11px; color:#bdc3c7">${n.lifeStory ? n.lifeStory.slice(-2).join('<br>') : ''}</span></li>`).join('');
     }
 }
 

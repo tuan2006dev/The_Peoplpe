@@ -16,7 +16,8 @@ export const state = {
     isCameraDragging: false, camDragStartX: 0, camDragStartY: 0, isMinimapDragging: false,
     spatialGrid: {}, particles: [], ticks: 0,
     possession: { active: false, npcId: null, keys: { w: false, a: false, s: false, d: false }, targetX: null, targetY: null },
-    settings: { showGrid: false, showNames: true, showTerritory: true, showEffects: true, pauseOnEnding: true, autoSave: true, sound: false, graphicsQuality: 'High' }
+    settings: { showGrid: false, showNames: true, showTerritory: true, showEffects: true, pauseOnEnding: true, autoSave: true, sound: false, graphicsQuality: 'High' },
+    worldDramaScore: 0, storyEvents: [], eventChains: [], newspaperArticles: []
 };
 
 export function resetState() {
@@ -29,4 +30,5 @@ export function resetState() {
     state.ticks = 0; state.hasEnded = false;
     state.possession = { active: false, npcId: null, keys: { w: false, a: false, s: false, d: false }, targetX: null, targetY: null };
     state.selectedNpcId = null; state.selectedHouseId = null; state.selectedTribeId = null; state.selectedRelId = null;
+    state.worldDramaScore = 0; state.storyEvents = []; state.eventChains = []; state.newspaperArticles = [];
 }

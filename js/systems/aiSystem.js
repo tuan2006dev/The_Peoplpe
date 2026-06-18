@@ -71,48 +71,107 @@ export function executeState(npc) {
                     break;
                 }
             }
-            let food = state.foods.find(f => Math.hypot(f.x-npc.x, f.y-npc.y) <= 5);
+            let food = state.foods.find(f => Math.hypot(f.x-npc.x, f.y-npc.y) <= 20); // Tăng tầm nhìn lên 20
             if (food) {
-                if (npc.x === food.x && npc.y === food.y) {
+                if (Math.hypot(food.x - npc.x, food.y - npc.y) <= 0.5) {
                     let idx = state.foods.indexOf(food); if(idx>-1) state.foods.splice(idx,1);
                     npc.hunger -= 40; npc.state = STATES.EATING; npc.actionWait = 60;
                 } else moveTowards(npc, food.x, food.y);
             } else moveRandom(npc);
             break;
         case STATES.SEEKING_WOOD:
-            if(state.grid[npc.x][npc.y] === TERRAIN.RUNG) { npc.state = STATES.CHOPPING_WOOD; npc.actionWait = 120; }
+            let wx = Math.round(npc.x); let wy = Math.round(npc.y);
+            if(wx>=0 && wx<COLS && wy>=0 && wy<ROWS && state.grid[wx][wy] === TERRAIN.RUNG) { npc.state = STATES.CHOPPING_WOOD; npc.actionWait = 120; }
             else moveRandom(npc);
             break;
         case STATES.CHOPPING_WOOD:
-            npc.wood += 5; state.grid[npc.x][npc.y] = TERRAIN.DAT; state.envGrid[npc.x][npc.y].biome = "Đồng cỏ"; npc.state = STATES.WANDERING;
+            let cx = Math.round(npc.x); let cy = Math.round(npc.y);
+            npc.wood += 5; 
+            if(cx>=0 && cx<COLS && cy>=0 && cy<ROWS) {
+                state.grid[cx][cy] = TERRAIN.DAT; state.envGrid[cx][cy].biome = "Đồng cỏ"; 
+            }
+            npc.state = npc.tribeId ? STATES.GATHERING_FOR_TRIBE : STATES.WANDERING;
             break;
         case STATES.BUILDING_HOME:
-            if (state.grid[npc.x][npc.y] === TERRAIN.DAT && !state.houses.find(h=>h.x===npc.x&&h.y===npc.y)) {
-                let houseType = 'Lều cỏ';
-                if (npc.job === 'Thợ xây' || npc.job === 'Chiến binh') houseType = 'Nhà gỗ';
-                if (npc.job === 'Trưởng làng' || npc.job === 'Lãnh chúa') houseType = 'Nhà đá';
-                
-                state.houses.push({ id: ++state.houseIdCounter, x: npc.x, y: npc.y, ownerId: npc.id, tribeId: npc.tribeId, durability: 100, type: houseType });
-                npc.wood -= 10; npc.homeId = state.houseIdCounter; npc.state = STATES.WANDERING; npc.actionWait = 180;
-            } else moveRandom(npc);
+            let bt = state.tribes.find(tr=>tr.id===npc.tribeId);
+            if (bt) {
+                if (npc.wood < 10) {
+                    if (bt.woodStorage >= 10) {
+                        if(Math.hypot(npc.x-bt.x, npc.y-bt.y)<=2) { bt.woodStorage -= 10; npc.wood += 10; }
+                        else moveTowards(npc, bt.x, bt.y);
+                    } else { npc.state = STATES.WANDERING; } // Kho hết gỗ
+                } else {
+                    let bx = Math.round(npc.x); let by = Math.round(npc.y);
+                    // Tìm ô đất trống trong lãnh thổ để xây
+                    if (bx>=0 && bx<COLS && by>=0 && by<ROWS && state.grid[bx][by] === TERRAIN.DAT && !state.houses.find(h=>h.x===bx&&h.y===by) && state.territoryGrid[bx][by] === bt.id) {
+                        let houseType = 'Lều cỏ';
+                        if (npc.job === 'Thợ xây' || npc.job === 'Chiến binh') houseType = 'Nhà gỗ';
+                        if (npc.job === 'Trưởng làng' || npc.job === 'Lãnh chúa') houseType = 'Nhà đá';
+                        state.houses.push({ id: ++state.houseIdCounter, x: bx, y: by, ownerId: null, tribeId: npc.tribeId, durability: 100, type: houseType });
+                        npc.wood -= 10; npc.state = STATES.WANDERING; npc.actionWait = 180;
+                    } else {
+                        moveRandom(npc);
+                        npc.energy -= 0.5;
+                        if (npc.energy <= 0) npc.state = STATES.WANDERING;
+                    }
+                }
+            } else {
+                if (npc.wood >= 10) {
+                    let bx = Math.round(npc.x); let by = Math.round(npc.y);
+                    // Lang thang tự xây trên đất trống vô chủ hoặc chưa ai chiếm
+                    if (bx>=0 && bx<COLS && by>=0 && by<ROWS && state.grid[bx][by] === TERRAIN.DAT && !state.houses.find(h=>h.x===bx&&h.y===by) && state.territoryGrid[bx][by] === null) {
+                        state.houses.push({ id: ++state.houseIdCounter, x: bx, y: by, ownerId: npc.id, tribeId: null, durability: 100, type: 'Lều cỏ' });
+                        npc.homeId = state.houseIdCounter;
+                        npc.wood -= 10; npc.state = STATES.WANDERING; npc.actionWait = 180;
+                    } else {
+                        moveRandom(npc);
+                        npc.energy -= 0.5;
+                        if (npc.energy <= 0) npc.state = STATES.WANDERING;
+                    }
+                } else { npc.state = STATES.SEEKING_WOOD; }
+            }
             break;
         case STATES.RESTING:
+            if (!npc.homeId && npc.tribeId) {
+                let emptyHouse = state.houses.find(x=>x.tribeId===npc.tribeId && x.ownerId===null);
+                if (emptyHouse) { emptyHouse.ownerId = npc.id; npc.homeId = emptyHouse.id; }
+            }
             if (npc.homeId) {
                 let h = state.houses.find(x=>x.id===npc.homeId);
-                if (h && (npc.x!==h.x || npc.y!==h.y)) moveTowards(npc, h.x, h.y);
-                else { npc.energy += 10; if(npc.energy>=100) npc.state = STATES.WANDERING; }
-            } else { npc.energy += 5; if(npc.energy>=100) npc.state = STATES.WANDERING; }
+                if (h && Math.hypot(npc.x-h.x, npc.y-h.y) > 1) moveTowards(npc, h.x, h.y);
+                else { npc.energy += 2; if(npc.energy>=100) npc.state = STATES.WANDERING; }
+            } else { npc.energy += 1; if(npc.energy>=100) npc.state = STATES.WANDERING; }
             break;
         case STATES.GATHERING_FOR_TRIBE:
-            let t = state.tribes.find(tr=>tr.id===npc.tribeId);
-            if(t) {
-                if(Math.hypot(npc.x-t.x, npc.y-t.y)<=2) { t.woodStorage += npc.wood; npc.wood = 0; npc.state = STATES.WANDERING; }
-                else moveTowards(npc, t.x, t.y);
-            } else npc.state = STATES.WANDERING;
+            if (!npc.inventory) npc.inventory = {foodCarried: 0, wood: 0};
+            let tr = state.tribes.find(tr=>tr.id===npc.tribeId);
+            if (!tr) { npc.state = STATES.WANDERING; break; }
+            
+            if (npc.job === "Nông dân") {
+                if (npc.inventory.foodCarried >= 10) {
+                    if(Math.hypot(npc.x-tr.x, npc.y-tr.y)<=2) { tr.foodStorage += npc.inventory.foodCarried; npc.inventory.foodCarried = 0; npc.state = STATES.WANDERING; }
+                    else moveTowards(npc, tr.x, tr.y);
+                } else {
+                    let f = state.foods.find(f => Math.hypot(f.x-npc.x, f.y-npc.y) <= 20);
+                    if (f) {
+                        if (Math.hypot(f.x-npc.x, f.y-npc.y) <= 0.5) {
+                            let idx = state.foods.indexOf(f); if(idx>-1) state.foods.splice(idx,1);
+                            npc.inventory.foodCarried += 5; npc.actionWait = 30;
+                        } else moveTowards(npc, f.x, f.y);
+                    } else moveRandom(npc);
+                }
+            } else { // Thợ mộc mang gỗ về
+                if (npc.wood > 0) {
+                    if(Math.hypot(npc.x-tr.x, npc.y-tr.y)<=2) { tr.woodStorage += npc.wood; npc.wood = 0; npc.state = STATES.WANDERING; }
+                    else moveTowards(npc, tr.x, tr.y);
+                } else {
+                    npc.state = STATES.SEEKING_WOOD;
+                }
+            }
             break;
         case STATES.WANDERING:
             moveRandom(npc);
-            npc.energy -= 1;
+            npc.energy -= 0.2;
             break;
         case STATES.PRAYING:
             npc.faith += 1;
@@ -131,12 +190,15 @@ export function executeState(npc) {
             if (npc.partnerId && npc.reproductionCooldown <= 0) {
                 let p = state.npcs.find(x => x.id === npc.partnerId);
                 if (p && Math.hypot(p.x - npc.x, p.y - npc.y) <= 3) {
+                    // Đặt cooldown ngay lập tức để tránh lỗi gọi import() liên tục trong lúc chờ Promise resolve
+                    npc.reproductionCooldown = 1200; 
+                    if (p) p.reproductionCooldown = 1200;
+
                     // Spawn child
                     import('../entities/npc.js').then(module => {
                         let child = module.createNpc(npc.x, npc.y, npc.id, p.id);
                         child.tribeId = npc.tribeId; child.kingdomId = npc.kingdomId;
                         npc.childrenIds.push(child.id); p.childrenIds.push(child.id);
-                        npc.reproductionCooldown = 1200; p.reproductionCooldown = 1200;
                         npc.relationshipStatus = RELATION.FAMILY; p.relationshipStatus = RELATION.FAMILY;
                         
                         import('./memorySystem.js').then(m => {

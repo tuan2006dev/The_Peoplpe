@@ -7,8 +7,13 @@ export function updateNpcsTick() {
     for (let i = 0; i < state.npcs.length; i++) {
         let npc = state.npcs[i];
         
-        if (npc.targetX !== null && npc.targetY !== null) npc.walkCycle += 0.2;
-        else npc.walkCycle = 0;
+        // Smooth walking animation scaling
+        if (npc.targetX !== null && npc.targetY !== null && (npc.x !== npc.targetX || Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y) > 0.1)) {
+            npc.walkCycle += 0.2;
+        } else {
+            npc.walkCycle = 0;
+            npc.targetX = null; npc.targetY = null;
+        }
         
         if (npc.actionWait > 0) npc.actionWait--;
         
@@ -16,8 +21,10 @@ export function updateNpcsTick() {
         
         if ((state.ticks + i) % 5 === 0) {
             determineState(npc);
-            executeState(npc);
         }
+        
+        // Execute state EVERY tick for smooth movement
+        executeState(npc);
     }
 }
 

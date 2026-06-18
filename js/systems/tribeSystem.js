@@ -6,20 +6,42 @@ import { logEvent, addWorldEvent } from './historySystem.js';
 
 export function updateTribeLogic() {
     let allUnaffiliated = state.npcs.filter(n => !n.tribeId);
-    let unaffiliatedAdults = allUnaffiliated.filter(n => n.age >= 16);
-    if (unaffiliatedAdults.length >= 4) {
-        let n = unaffiliatedAdults[0];
-        let tId = ++state.tribeIdCounter; let tName = TRIBE_NAMES[Math.floor(Math.random() * TRIBE_NAMES.length)];
-        let tribe = { 
-            id: tId, name: tName, x: n.x, y: n.y, leaderId: n.id, members: [n.id], houses: [], level: 'Trại nhỏ', foodStorage: 0, woodStorage: 0, maxStorage: 50, faith: 50, culture: 10, foundedYear: state.time.year, color: TRIBE_COLORS[tId % TRIBE_COLORS.length], radius: 10,
-            ageLevel: AGES[0], researchPoints: 0, culturePoints: 0, educationLevel: 0, innovationRate: 1.0, unlockedTechs: [], currentResearchId: null, diplomacy: {}, warCooldowns: {},
-            territoryTiles: [{x: n.x, y: n.y}], borderQueue: [{x: n.x, y: n.y}]
-        };
-        if(state.territoryGrid[n.x] && state.territoryGrid[n.x][n.y] === null) state.territoryGrid[n.x][n.y] = tId;
-        n.tribeId = tId; state.tribes.push(tribe);
-        state.buildings.push({ id: ++state.buildingIdCounter, type: 'campfire', x: n.x, y: n.y, tribeId: tId });
-        logEvent(`Bộ lạc ${tName} đã được thành lập!`); 
-        addWorldEvent('Tribe', 'Historic', `Bộ lạc ${tName} được thành lập`, `Những con người lang thang đã quần tụ lại và lập nên bộ lạc ${tName} dưới sự dẫn dắt của ${n.name}.`);
+    let potentialLeaders = allUnaffiliated.filter(n => n.age >= 16 && n.partnerId);
+    
+    for (let leader of potentialLeaders) {
+        // Find nearby unaffiliated people (radius 15)
+        let nearbyGroup = allUnaffiliated.filter(n => Math.hypot(n.x - leader.x, n.y - leader.y) <= 15);
+        let nearbyHouses = state.houses.filter(h => h.tribeId === null && Math.hypot(h.x - leader.x, h.y - leader.y) <= 15);
+        
+        if (nearbyGroup.length >= 5 && nearbyHouses.length >= 4) {
+            let tId = ++state.tribeIdCounter; 
+            let tName = TRIBE_NAMES[Math.floor(Math.random() * TRIBE_NAMES.length)];
+            let membersIds = nearbyGroup.map(n => n.id);
+            
+            let tribe = { 
+                id: tId, name: tName, x: leader.x, y: leader.y, leaderId: leader.id, members: membersIds, houses: [], level: 'Trại nhỏ', foodStorage: 0, woodStorage: 0, maxStorage: 50, faith: 50, culture: 10, foundedYear: state.time.year, color: TRIBE_COLORS[tId % TRIBE_COLORS.length], radius: 10,
+                ageLevel: AGES[0], researchPoints: 0, culturePoints: 0, educationLevel: 0, innovationRate: 1.0, unlockedTechs: [], currentResearchId: null, diplomacy: {}, warCooldowns: {},
+                territoryTiles: [{x: leader.x, y: leader.y}], borderQueue: [{x: leader.x, y: leader.y}]
+            };
+            
+            if(state.territoryGrid[leader.x] && state.territoryGrid[leader.x][leader.y] === null) state.territoryGrid[leader.x][leader.y] = tId;
+            
+            nearbyGroup.forEach(n => n.tribeId = tId);
+            nearbyHouses.forEach(h => {
+                h.tribeId = tId;
+                if(state.territoryGrid[h.x] && state.territoryGrid[h.x][h.y] === null) {
+                    state.territoryGrid[h.x][h.y] = tId;
+                    tribe.territoryTiles.push({x: h.x, y: h.y});
+                    tribe.borderQueue.push({x: h.x, y: h.y});
+                }
+            });
+            state.tribes.push(tribe);
+            state.buildings.push({ id: ++state.buildingIdCounter, type: 'campfire', x: leader.x, y: leader.y, tribeId: tId });
+            
+            logEvent(`Bộ lạc ${tName} đã được thành lập từ ${nearbyHouses.length} lều cỏ!`); 
+            addWorldEvent('Tribe', 'Historic', `Bộ lạc ${tName} được thành lập`, `Gia đình của ${leader.name} đã quy tụ ${nearbyGroup.length} người lang thang lại và lập nên bộ lạc ${tName} dựa trên ${nearbyHouses.length} căn lều cỏ liền kề.`);
+            break; // Chỉ lập 1 bộ lạc mỗi tick để tránh trùng lặp nhóm
+        }
     }
     
     state.tribes.forEach(t => {

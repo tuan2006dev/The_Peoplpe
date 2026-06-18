@@ -11,7 +11,9 @@ export function updatePlanning(npc) {
         { state: STATES.SEEKING_FOOD, score: getFoodScore(npc) },
         { state: STATES.RESTING, score: getRestScore(npc) },
         { state: STATES.WANDERING, score: getWanderScore(npc) },
-        { state: STATES.SEEKING_WOOD, score: getWorkScore(npc) },
+        { state: STATES.SEEKING_WOOD, score: (npc.job === "Thợ mộc" || (!npc.tribeId && !npc.homeId && npc.wood < 10)) ? getWorkScore(npc) : 0 },
+        { state: STATES.GATHERING_FOR_TRIBE, score: npc.job === "Nông dân" ? getWorkScore(npc) : 0 },
+        { state: STATES.BUILDING_HOME, score: (npc.job === "Thợ xây" || (!npc.tribeId && !npc.homeId && npc.wood >= 10)) ? getWorkScore(npc) : 0 },
         { state: STATES.SEEKING_PARTNER, score: getPartnerScore(npc) },
         { state: STATES.CARING_FAMILY, score: getFamilyScore(npc) },
         { state: STATES.PRAYING, score: getPrayScore(npc) }
@@ -50,11 +52,9 @@ function getWanderScore(npc) {
 
 function getWorkScore(npc) {
     let score = 0;
-    if (npc.dailyRoutine === ROUTINES.MORNING || npc.dailyRoutine === ROUTINES.NOON) score += 30;
+    if (npc.dailyRoutine === ROUTINES.MORNING || npc.dailyRoutine === ROUTINES.NOON) score += 40;
     if (npc.ambition > 70) score += 20;
-    if (npc.job === "Thợ mộc" || npc.job === "Thợ xây") score += 40;
     if (npc.kingdomId) score += 20; // Kingdoms demand resources
-    if (npc.wood < 5) score += 20;
     return score;
 }
 

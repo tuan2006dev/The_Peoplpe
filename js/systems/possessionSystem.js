@@ -46,6 +46,19 @@ export function exitPossession() {
             m.addMemory(npc, 'Miracle', 'Bị Thần Nhập', 'Linh hồn của Thần đã mượn tạm thể xác này.', 50, null);
             npc.faith = Math.min(100, npc.faith + 30);
             npc.energy = Math.max(0, npc.energy - 30);
+            
+            // Story Director hook for Divine Encounter
+            let possessCount = (npc.memories || []).filter(mem => mem.title === 'Bị Thần Nhập').length;
+            if (possessCount >= 3 && (!npc.traits || !npc.traits.includes('prophet'))) {
+                import('./storyDirectorSystem.js').then(sd => {
+                    if (!npc.traits) npc.traits = [];
+                    if (!npc.traits.includes('prophet')) {
+                        npc.traits.push('prophet');
+                        sd.createStoryEvent('Divine Encounter', `Gặp Gỡ Thần Linh`, `${npc.name} đã được Thần mượn xác nhiều lần và nhận lãnh thiên mệnh.`, 'LEGENDARY', [npc.id]);
+                        sd.addLifeStory(npc.id, `Trở thành sứ giả của Thần sau nhiều lần được chọn làm thể xác.`);
+                    }
+                }).catch(e => console.log("StoryDirector loading deferred"));
+            }
         });
     }
     
