@@ -2,6 +2,7 @@ import { state } from '../gameState.js';
 import { STATES, RELATION } from '../data/constants.js';
 import { TERRAIN, COLS, ROWS } from '../config.js';
 import { moveRandom, moveTowards } from '../utils.js';
+import { updatePlanning } from './planningSystem.js';
 
 export function determineBelief(npc) {
     npc.faith -= 0.1;
@@ -33,26 +34,32 @@ export function determineJob(npc) {
 
 export function determineState(npc) {
     if (npc.actionWait > 0 || npc.state === STATES.COMMANDED) return; 
+    if (state.possession.active && state.possession.npcId === npc.id) return; // Ignore AI if possessed
 
-    // effects is not imported but we can use state.effects
     let isScared = state.effects.some(e=>(e.type==='set'||e.type==='bao'||e.type==='plague') && Math.hypot(npc.x*16-e.x, npc.y*16-e.y)<16*6);
-    if (isScared) npc.state = STATES.FLEEING_DISASTER;
-    else if (npc.state === STATES.EATING || npc.state === STATES.CHOPPING_WOOD || npc.state === STATES.PRAYING) {} 
-    else if (npc.hunger > 60) npc.state = STATES.SEEKING_FOOD;
-    else if (npc.energy < 25) npc.state = STATES.RESTING;
-    else if (npc.age >= 16) { 
-        if (npc.job === "Thợ xây" && state.houses.some(h=>h.tribeId===npc.tribeId && h.durability < 100)) npc.state = STATES.REBUILDING;
-        else if (npc.beliefType === "Cuồng tín" && Math.random() < 0.1) npc.state = STATES.PRAYING;
-        else if (npc.tribeId && npc.wood > 5 && Math.random() < 0.2) npc.state = STATES.GATHERING_FOR_TRIBE;
-        else if (!npc.homeId && npc.wood < 10) npc.state = STATES.SEEKING_WOOD;
-        else if (!npc.homeId && npc.wood >= 10) npc.state = STATES.BUILDING_HOME;
-        else if (npc.homeId && npc.relationshipStatus === RELATION.SINGLE) npc.state = STATES.SEEKING_PARTNER;
-        else npc.state = STATES.WANDERING;
-    } else npc.state = STATES.WANDERING;
+    if (isScared) { npc.state = STATES.FLEEING_DISASTER; return; }
+    
+    if (npc.state === STATES.EATING || npc.state === STATES.CHOPPING_WOOD || npc.state === STATES.PRAYING) return; 
+    
+    // Check for enemies
+    if (npc.tribeId) {
+        let t = state.tribes.find(tr => tr.id === npc.tribeId);
+        if (t && t.diplomacy) {
+            let enemyNear = state.npcs.find(n => n.id !== npc.id && n.tribeId && t.diplomacy[n.tribeId] === 'war' && Math.hypot(n.x - npc.x, n.y - npc.y) <= 8 && n.health > 0);
+            if (enemyNear) {
+                npc.state = STATES.ATTACKING;
+                npc.targetEnemyId = enemyNear.id;
+                return;
+            }
+        }
+    }
+    
+    updatePlanning(npc);
 }
 
 export function executeState(npc) {
     if (npc.actionWait > 0) return;
+    if (state.possession.active && state.possession.npcId === npc.id) return; // Ignore AI execution
 
     switch(npc.state) {
         case STATES.SEEKING_FOOD:
@@ -81,7 +88,11 @@ export function executeState(npc) {
             break;
         case STATES.BUILDING_HOME:
             if (state.grid[npc.x][npc.y] === TERRAIN.DAT && !state.houses.find(h=>h.x===npc.x&&h.y===npc.y)) {
-                state.houses.push({ id: ++state.houseIdCounter, x: npc.x, y: npc.y, ownerId: npc.id, tribeId: npc.tribeId, durability: 100 });
+                let houseType = 'Lều cỏ';
+                if (npc.job === 'Thợ xây' || npc.job === 'Chiến binh') houseType = 'Nhà gỗ';
+                if (npc.job === 'Trưởng làng' || npc.job === 'Lãnh chúa') houseType = 'Nhà đá';
+                
+                state.houses.push({ id: ++state.houseIdCounter, x: npc.x, y: npc.y, ownerId: npc.id, tribeId: npc.tribeId, durability: 100, type: houseType });
                 npc.wood -= 10; npc.homeId = state.houseIdCounter; npc.state = STATES.WANDERING; npc.actionWait = 180;
             } else moveRandom(npc);
             break;
@@ -102,6 +113,65 @@ export function executeState(npc) {
         case STATES.WANDERING:
             moveRandom(npc);
             npc.energy -= 1;
+            break;
+        case STATES.PRAYING:
+            npc.faith += 1;
+            npc.actionWait = 60;
+            npc.state = STATES.WANDERING;
+            break;
+        case STATES.SEEKING_PARTNER:
+            let partner = state.npcs.find(n => n.id !== npc.id && Math.hypot(n.x - npc.x, n.y - npc.y) <= 5 && n.relationshipStatus === RELATION.SINGLE);
+            if (partner) {
+                npc.partnerId = partner.id; partner.partnerId = npc.id;
+                npc.relationshipStatus = RELATION.PARTNERED; partner.relationshipStatus = RELATION.PARTNERED;
+                npc.state = STATES.WANDERING; partner.state = STATES.WANDERING;
+            } else moveRandom(npc);
+            break;
+        case STATES.CARING_FAMILY:
+            if (npc.partnerId && npc.reproductionCooldown <= 0) {
+                let p = state.npcs.find(x => x.id === npc.partnerId);
+                if (p && Math.hypot(p.x - npc.x, p.y - npc.y) <= 3) {
+                    // Spawn child
+                    import('../entities/npc.js').then(module => {
+                        let child = module.createNpc(npc.x, npc.y, npc.id, p.id);
+                        child.tribeId = npc.tribeId; child.kingdomId = npc.kingdomId;
+                        npc.childrenIds.push(child.id); p.childrenIds.push(child.id);
+                        npc.reproductionCooldown = 1200; p.reproductionCooldown = 1200;
+                        npc.relationshipStatus = RELATION.FAMILY; p.relationshipStatus = RELATION.FAMILY;
+                        
+                        import('./memorySystem.js').then(m => {
+                            m.addMemory(npc, 'ChildBorn', 'Sinh con', `Đã sinh ra bé ${child.name}`, 30, child.id);
+                            m.addMemory(p, 'ChildBorn', 'Sinh con', `Đã sinh ra bé ${child.name}`, 30, child.id);
+                        });
+                    });
+                } else if (p) {
+                    moveTowards(npc, p.x, p.y);
+                } else moveRandom(npc);
+            } else moveRandom(npc);
+            break;
+        case STATES.FLEEING_DISASTER:
+            moveRandom(npc); // simplified
+            break;
+        case STATES.ATTACKING:
+            if (npc.targetEnemyId) {
+                let enemy = state.npcs.find(n => n.id === npc.targetEnemyId);
+                if (enemy && enemy.health > 0) {
+                    let dist = Math.hypot(enemy.x - npc.x, enemy.y - npc.y);
+                    if (dist <= 1.5) {
+                        enemy.health -= 5 + Math.random() * 10;
+                        npc.actionWait = 30; // attack cooldown
+                        state.particles.push({x: enemy.x * 16 + 8, y: enemy.y * 16 + 8, vx: Math.random()*2-1, vy: Math.random()*2-1, life: 30, type: 'blood', color: '#e74c3c'});
+                    } else if (dist <= 10) {
+                        moveTowards(npc, enemy.x, enemy.y);
+                    } else {
+                        npc.state = STATES.WANDERING;
+                        npc.targetEnemyId = null;
+                    }
+                } else {
+                    npc.state = STATES.WANDERING;
+                    npc.targetEnemyId = null;
+                }
+            } else npc.state = STATES.WANDERING;
             break;
         default: moveRandom(npc); break;
     }

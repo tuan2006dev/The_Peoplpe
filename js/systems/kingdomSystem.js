@@ -1,6 +1,6 @@
 import { state } from '../gameState.js';
 import { KINGDOM_NAMES } from '../data/names.js';
-import { logEvent } from './historySystem.js';
+import { logEvent, addWorldEvent } from './historySystem.js';
 
 export function updateKingdomLogic() {
     state.tribes.forEach(t => {
@@ -12,6 +12,7 @@ export function updateKingdomLogic() {
             };
             t.kingdomId = kId; state.kingdoms.push(kingdom);
             logEvent(`Vương quốc ${kName} đã được khai sinh từ ${t.name}!`);
+            addWorldEvent('Kingdom', 'Historic', `Vương quốc ${kName} ra đời`, `Từ nền tảng của bộ lạc ${t.name}, một vương quốc rộng lớn mang tên ${kName} đã được thành lập.`);
         }
     });
     state.kingdoms.forEach(k => {

@@ -1,6 +1,7 @@
 import { state } from '../gameState.js';
 import { determineJob, determineBelief, determineMood, determineState, executeState } from './aiSystem.js';
 import { spawnFood } from './worldSystem.js';
+import { generateLifeGoal } from './memorySystem.js';
 
 export function updateNpcsTick() {
     for (let i = 0; i < state.npcs.length; i++) {
@@ -10,6 +11,8 @@ export function updateNpcsTick() {
         else npc.walkCycle = 0;
         
         if (npc.actionWait > 0) npc.actionWait--;
+        
+        if (!npc.lifeGoal) generateLifeGoal(npc);
         
         if ((state.ticks + i) % 5 === 0) {
             determineState(npc);
@@ -41,9 +44,20 @@ export function updateDailyLogic() {
         if (npc.health <= 0) {
             if (npc.id === state.selectedNpcId) state.selectedNpcId = null;
             if (npc.homeId) { let h = state.houses.find(x=>x.id===npc.homeId); if(h) h.ownerId = null; }
+            state.deadNpcs.push(npc);
+            
+            import('./memorySystem.js').then(m => {
+                let p = npc.partnerId ? state.npcs.find(x=>x.id===npc.partnerId) : null;
+                if(p) m.addMemory(p, 'Death', 'Mất người thân', `${npc.name} đã qua đời.`, -40, npc.id);
+            });
         }
     }
     
     // Remove dead
     state.npcs = state.npcs.filter(n => n.health > 0);
+    
+    // Garbage collect deadNpcs (keep only favorites and recent ones to prevent memory leak)
+    if (state.deadNpcs.length > 200) {
+        state.deadNpcs = state.deadNpcs.filter(n => n.favorite || state.deadNpcs.indexOf(n) > state.deadNpcs.length - 100);
+    }
 }

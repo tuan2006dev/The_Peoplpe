@@ -10,6 +10,9 @@ import { rebuildSpatialGrid } from './systems/worldSystem.js';
 import { updateTribeLogic } from './systems/tribeSystem.js';
 import { updateKingdomLogic } from './systems/kingdomSystem.js';
 import { updateGodLogic } from './systems/godPowerSystem.js';
+import { updateRoutine } from './systems/routineSystem.js';
+import { updateRelationships } from './systems/relationshipSystem.js';
+import { updatePossessionTick } from './systems/possessionSystem.js';
 import { saveGame } from './saveLoad.js';
 import { centerCamera } from './camera.js';
 
@@ -24,10 +27,11 @@ function init() {
     createTextures();
     
     for (let x=0; x<COLS; x++) { 
-        state.grid[x]=[]; state.envGrid[x]=[]; 
+        state.grid[x]=[]; state.envGrid[x]=[]; state.territoryGrid[x]=[];
         for (let y=0; y<ROWS; y++) {
             state.grid[x][y]=TERRAIN.NUOC; 
             state.envGrid[x][y]={ temperature: 20, humidity: 80, fertility: 10, pollution: 0, biome: "Nước" };
+            state.territoryGrid[x][y]=null;
         } 
     }
     
@@ -66,12 +70,14 @@ function gameLoop(timestamp) {
         
         for (let j = state.effects.length - 1; j >= 0; j--) {
             let e = state.effects[j]; e.life--;
-            // Effect logic here for simplicity, or move to system
             if (e.life <= 0) state.effects.splice(j, 1);
         }
         
+        updateRoutine();
+        updateRelationships();
         updateParticles();
         updateNpcsTick();
+        updatePossessionTick();
     }
     let t1 = performance.now();
     

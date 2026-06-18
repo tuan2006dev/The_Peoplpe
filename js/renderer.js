@@ -1,6 +1,7 @@
 import { state } from './gameState.js';
 import { TILE_SIZE, COLS, ROWS, COLORS, TERRAIN } from './config.js';
 import { updateUITabs } from './ui.js';
+import { centerCamera } from './camera.js';
 
 export const canvas = document.getElementById('game-canvas');
 export const ctx = canvas.getContext('2d');
@@ -10,34 +11,32 @@ export const mCtx = minimapCanvas.getContext('2d');
 let patterns = {};
 
 export function createTextures() {
-    let createPat = (drawFunc) => {
-        let tCan = document.createElement('canvas');
-        tCan.width = TILE_SIZE; tCan.height = TILE_SIZE;
-        let tCtx = tCan.getContext('2d');
-        drawFunc(tCtx);
-        return ctx.createPattern(tCan, 'repeat');
+    let createPattern = (color1, color2, size, type) => {
+        let c = document.createElement('canvas'); c.width = size; c.height = size;
+        let ctx = c.getContext('2d');
+        ctx.fillStyle = color1; ctx.fillRect(0,0,size,size);
+        ctx.fillStyle = color2;
+        if (type === 'dots') {
+            for(let i=0; i<5; i++) { ctx.fillRect(Math.random()*size, Math.random()*size, 2, 2); }
+        } else if (type === 'lines') {
+            ctx.fillRect(0, size/2, size, 2);
+        } else if (type === 'waves') {
+            ctx.beginPath(); ctx.moveTo(0, size/2); ctx.quadraticCurveTo(size/2, 0, size, size/2); ctx.stroke();
+        } else if (type === 'hex') {
+            ctx.fillRect(2, 2, size-4, size-4);
+        } else if (type === 'noise') {
+            for(let i=0; i<10; i++) { ctx.fillRect(Math.random()*size, Math.random()*size, 1, 1); }
+        }
+        return ctx.createPattern(c, 'repeat');
     };
     
-    patterns[TERRAIN.DAT] = createPat(c => {
-        c.fillStyle = '#2ecc71'; c.fillRect(0,0,16,16);
-        c.fillStyle = '#27ae60'; c.fillRect(2,2,4,4); c.fillRect(10,8,3,3);
-    });
-    patterns[TERRAIN.NUOC] = createPat(c => {
-        c.fillStyle = '#3498db'; c.fillRect(0,0,16,16);
-        c.fillStyle = '#2980b9'; c.fillRect(0,4,16,2); c.fillRect(0,12,16,2);
-    });
-    patterns[TERRAIN.RUNG] = createPat(c => {
-        c.fillStyle = '#2ecc71'; c.fillRect(0,0,16,16);
-        c.fillStyle = '#1e8449'; 
-        c.beginPath(); c.arc(8, 8, 6, 0, Math.PI*2); c.fill();
-        c.fillStyle = '#145a32';
-        c.beginPath(); c.arc(12, 12, 4, 0, Math.PI*2); c.fill();
-    });
-    patterns[TERRAIN.NUI] = createPat(c => {
-        c.fillStyle = '#7f8c8d'; c.fillRect(0,0,16,16);
-        c.fillStyle = '#95a5a6'; c.beginPath(); c.moveTo(2,16); c.lineTo(8,2); c.lineTo(14,16); c.fill();
-        c.fillStyle = '#bdc3c7'; c.beginPath(); c.moveTo(5,9); c.lineTo(8,2); c.lineTo(11,9); c.fill();
-    });
+    patterns[TERRAIN.DAT] = createPattern('#2ecc71', '#27ae60', TILE_SIZE, 'dots');
+    patterns[TERRAIN.NUOC] = createPattern('#3498db', '#2980b9', TILE_SIZE, 'waves');
+    patterns[TERRAIN.RUNG] = createPattern('#27ae60', '#1e8449', TILE_SIZE, 'dots');
+    patterns[TERRAIN.NUI] = createPattern('#7f8c8d', '#95a5a6', TILE_SIZE, 'lines');
+    patterns[TERRAIN.CAT] = createPattern('#f1c40f', '#f39c12', TILE_SIZE, 'noise');
+    patterns[TERRAIN.TUYET] = createPattern('#ecf0f1', '#bdc3c7', TILE_SIZE, 'dots');
+    patterns[TERRAIN.DAM_LAY] = createPattern('#16a085', '#1abc9c', TILE_SIZE, 'dots');
 }
 
 export function updateParticles() {
@@ -49,6 +48,12 @@ export function updateParticles() {
 }
 
 export function draw() {
+    if (state.followedNpcId) {
+        let n = state.npcs.find(x => x.id === state.followedNpcId);
+        if (n) centerCamera(n.x * TILE_SIZE, n.y * TILE_SIZE);
+        else state.followedNpcId = null;
+    }
+
     ctx.fillStyle = '#1e272e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -56,6 +61,7 @@ export function draw() {
     let startRow = Math.max(0, Math.floor((-state.camera.y) / (TILE_SIZE * state.camera.zoom)));
     let endCol = Math.min(COLS, startCol + Math.ceil(canvas.width / (TILE_SIZE * state.camera.zoom)) + 1);
     let endRow = Math.min(ROWS, startRow + Math.ceil(canvas.height / (TILE_SIZE * state.camera.zoom)) + 1);
+    let v = { sx: startCol * TILE_SIZE, sy: startRow * TILE_SIZE, ex: endCol * TILE_SIZE, ey: endRow * TILE_SIZE };
 
     ctx.save();
     ctx.translate(state.camera.x, state.camera.y);
@@ -91,13 +97,120 @@ export function draw() {
             }
             
             if (state.settings.showGrid) { ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
-            if (state.settings.showTerritory && state.kingdoms.length > 0) {
-                let kId = null;
-                for(let k of state.kingdoms) { if(k.territory && k.territory.some(pt=>pt.x===x&&pt.y===y)){kId=k.id; break;} }
-                if(kId) { let k=state.kingdoms.find(x=>x.id===kId); ctx.fillStyle=k.color; ctx.globalAlpha=0.2; ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE); ctx.globalAlpha=1.0; }
-            }
         }
     }
+    
+    // Territories (Tribes & Kingdoms)
+    if (state.settings.showTerritory) {
+        ctx.lineWidth = 2;
+        
+        // Render Pixel Territories
+        for (let x = startCol; x < endCol; x++) {
+            for (let y = startRow; y < endRow; y++) {
+                if (state.territoryGrid && state.territoryGrid[x] && state.territoryGrid[x][y]) {
+                    let tId = state.territoryGrid[x][y];
+                    let t = state.tribes.find(tr => tr.id === tId);
+                    if (t && t.color) {
+                        let px = x * TILE_SIZE;
+                        let py = y * TILE_SIZE;
+                        
+                        ctx.globalAlpha = 0.2;
+                        ctx.fillStyle = t.color;
+                        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        
+                        ctx.globalAlpha = 0.8;
+                        ctx.strokeStyle = t.color;
+                        
+                        if (y === 0 || state.territoryGrid[x][y-1] !== tId) {
+                            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px+TILE_SIZE, py); ctx.stroke();
+                        }
+                        if (y === ROWS-1 || state.territoryGrid[x][y+1] !== tId) {
+                            ctx.beginPath(); ctx.moveTo(px, py+TILE_SIZE); ctx.lineTo(px+TILE_SIZE, py+TILE_SIZE); ctx.stroke();
+                        }
+                        if (x === 0 || state.territoryGrid[x-1][y] !== tId) {
+                            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py+TILE_SIZE); ctx.stroke();
+                        }
+                        if (x === COLS-1 || state.territoryGrid[x+1][y] !== tId) {
+                            ctx.beginPath(); ctx.moveTo(px+TILE_SIZE, py); ctx.lineTo(px+TILE_SIZE, py+TILE_SIZE); ctx.stroke();
+                        }
+                        
+                        // Kingdom Border (Unified)
+                        if (t.kingdomId) {
+                            let k = state.kingdoms.find(kg => kg.id === t.kingdomId);
+                            if (k && k.color) {
+                                ctx.lineWidth = 4;
+                                ctx.strokeStyle = k.color;
+                                
+                                let checkEdge = (nx, ny) => {
+                                    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return true;
+                                    let neighborTid = state.territoryGrid[nx][ny];
+                                    if (neighborTid === null) return true;
+                                    return !k.tribeIds.includes(neighborTid);
+                                };
+                                
+                                if (checkEdge(x, y-1)) { ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px+TILE_SIZE, py); ctx.stroke(); }
+                                if (checkEdge(x, y+1)) { ctx.beginPath(); ctx.moveTo(px, py+TILE_SIZE); ctx.lineTo(px+TILE_SIZE, py+TILE_SIZE); ctx.stroke(); }
+                                if (checkEdge(x-1, y)) { ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py+TILE_SIZE); ctx.stroke(); }
+                                if (checkEdge(x+1, y)) { ctx.beginPath(); ctx.moveTo(px+TILE_SIZE, py); ctx.lineTo(px+TILE_SIZE, py+TILE_SIZE); ctx.stroke(); }
+                                
+                                ctx.lineWidth = 2; // reset
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ctx.globalAlpha = 1.0;
+        
+        state.tribes.forEach(t => {
+            if (t.color) {
+                // Tribe Icon (Tent)
+                if (t.x * TILE_SIZE >= v.sx && t.x * TILE_SIZE <= v.ex && t.y * TILE_SIZE >= v.sy && t.y * TILE_SIZE <= v.ey) {
+                    ctx.save();
+                    ctx.translate(t.x * TILE_SIZE, t.y * TILE_SIZE);
+                    ctx.fillStyle = t.color;
+                    ctx.beginPath(); ctx.moveTo(TILE_SIZE/2, 0); ctx.lineTo(TILE_SIZE, TILE_SIZE); ctx.lineTo(0, TILE_SIZE); ctx.fill();
+                    ctx.fillStyle = '#1a1a24';
+                    ctx.beginPath(); ctx.moveTo(TILE_SIZE/2, TILE_SIZE/2); ctx.lineTo(TILE_SIZE/2+3, TILE_SIZE); ctx.lineTo(TILE_SIZE/2-3, TILE_SIZE); ctx.fill();
+                    // Draw name text
+                    if (state.camera.zoom > 0.8) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = "bold 10px Arial";
+                        ctx.textAlign = "center";
+                        ctx.fillText(t.name, TILE_SIZE/2, -5);
+                    }
+                    ctx.restore();
+                }
+            }
+        });
+
+        state.kingdoms.forEach(k => {
+            // Kingdom Icon (Castle at Capital)
+            if (k.capitalTribeId) {
+                let cap = state.tribes.find(tr => tr.id === k.capitalTribeId);
+                if (cap && cap.x * TILE_SIZE >= v.sx && cap.x * TILE_SIZE <= v.ex && cap.y * TILE_SIZE >= v.sy && cap.y * TILE_SIZE <= v.ey) {
+                    ctx.globalAlpha = 1.0;
+                    ctx.save();
+                    ctx.translate(cap.x * TILE_SIZE, cap.y * TILE_SIZE);
+                    ctx.fillStyle = k.color;
+                    ctx.fillRect(0, TILE_SIZE/2, TILE_SIZE, TILE_SIZE/2);
+                    ctx.fillRect(0, TILE_SIZE/2-4, 4, 4);
+                    ctx.fillRect(TILE_SIZE/2-2, TILE_SIZE/2-4, 4, 4);
+                    ctx.fillRect(TILE_SIZE-4, TILE_SIZE/2-4, 4, 4);
+                    
+                    if (state.camera.zoom > 0.8) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = "bold 11px Arial";
+                        ctx.textAlign = "center";
+                        ctx.fillText("👑 " + k.name, TILE_SIZE/2, -15);
+                    }
+                    ctx.restore();
+                }
+            }
+        });
+        ctx.globalAlpha = 1.0;
+    }
+
     document.getElementById('dbg-vistiles').innerText = visTiles;
 
     ctx.fillStyle = '#e74c3c';
@@ -107,10 +220,24 @@ export function draw() {
         }
     });
 
-    ctx.fillStyle = '#8e44ad';
+    // Draw Houses
     state.houses.forEach(h => {
-        if(h.x>=startCol && h.x<endCol && h.y>=startRow && h.y<endRow) {
-            ctx.fillRect(h.x*TILE_SIZE+2, h.y*TILE_SIZE+2, 12, 12);
+        let hx = h.x * TILE_SIZE, hy = h.y * TILE_SIZE;
+        if (hx >= v.sx && hx <= v.ex && hy >= v.sy && hy <= v.ey) {
+            if (h.type === 'Nhà gỗ') {
+                ctx.fillStyle = '#d35400'; ctx.fillRect(hx+2, hy+2, TILE_SIZE-4, TILE_SIZE-4);
+                ctx.fillStyle = '#8e44ad'; ctx.fillRect(hx+TILE_SIZE/2-2, hy-2, 4, 4); // Chimney
+            } else if (h.type === 'Nhà đá') {
+                ctx.fillStyle = '#7f8c8d'; ctx.fillRect(hx+2, hy+2, TILE_SIZE-4, TILE_SIZE-4);
+                ctx.fillStyle = '#bdc3c7'; ctx.fillRect(hx+4, hy+4, TILE_SIZE-8, TILE_SIZE-8);
+                ctx.fillStyle = '#c0392b'; ctx.fillRect(hx+TILE_SIZE/2-3, hy-4, 6, 6); // Flag/chimney
+            } else { // Lều cỏ default
+                ctx.fillStyle = '#e67e22'; ctx.fillRect(hx+2, hy+4, TILE_SIZE-4, TILE_SIZE-4);
+                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(hx, hy+4); ctx.lineTo(hx+TILE_SIZE/2, hy-2); ctx.lineTo(hx+TILE_SIZE, hy+4); ctx.fill();
+            }
+            if (state.selectedHouseId === h.id) {
+                ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.strokeRect(hx, hy, TILE_SIZE, TILE_SIZE);
+            }
         }
     });
 
@@ -129,7 +256,23 @@ export function draw() {
                 ctx.lineTo(px, py - 2 + walkY); ctx.fill();
             } else {
                 ctx.fillStyle = n.id === state.selectedNpcId ? '#f1c40f' : (n.isSoldier ? '#e74c3c' : '#dcdde1');
+                let isPossessed = state.possession && state.possession.active && state.possession.npcId === n.id;
+                if (isPossessed) {
+                    ctx.shadowColor = '#e67e22';
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = '#e67e22';
+                }
                 ctx.beginPath(); ctx.arc(px, py + walkY, 4, 0, Math.PI*2); ctx.fill();
+                if (isPossessed) ctx.shadowBlur = 0;
+            }
+            
+            // Draw indicators
+            if (n.state === 'praying') {
+                ctx.fillStyle = '#f1c40f'; ctx.font = '8px Arial'; ctx.fillText('🙏', px, py - 12 + walkY);
+            } else if (n.state === 'talking') {
+                ctx.fillStyle = '#fff'; ctx.font = '8px Arial'; ctx.fillText('💬', px, py - 12 + walkY);
+            } else if (n.state === 'attacking' || n.state === 'defending') {
+                ctx.fillStyle = '#e74c3c'; ctx.font = '8px Arial'; ctx.fillText('⚔️', px, py - 12 + walkY);
             }
             
             if (state.settings.showNames) {
@@ -141,7 +284,7 @@ export function draw() {
     
     if (state.settings.showEffects) {
         state.particles.forEach(p => {
-            ctx.fillStyle = p.type==='bless'?'#f1c40f':p.type==='curse'?'#8e44ad':p.type==='heal'?'#2ecc71':'#fff';
+            ctx.fillStyle = p.color || (p.type==='bless'?'#f1c40f':p.type==='curse'?'#8e44ad':p.type==='heal'?'#2ecc71':'#fff');
             ctx.fillRect(p.x, p.y, 2, 2);
         });
         state.effects.forEach(e => {

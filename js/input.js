@@ -10,11 +10,42 @@ import { inspectObject } from './ui.js';
 export const keys = {};
 
 export function setupInput() {
-    window.addEventListener('keydown', e => keys[e.key] = true);
-    window.addEventListener('keyup', e => keys[e.key] = false);
+    window.addEventListener('keydown', e => {
+        keys[e.key] = true;
+        let k = e.key.toLowerCase();
+        if (state.possession.active) {
+            if (['w', 'a', 's', 'd'].includes(k)) state.possession.keys[k] = true;
+            if (k === 'escape') {
+                import('./systems/possessionSystem.js').then(m => m.exitPossession());
+            }
+            if (k === 'e') {
+                import('./systems/possessionSystem.js').then(m => m.handleInteract());
+            }
+            if (k === 'q') {
+                import('./systems/possessionSystem.js').then(m => m.handleQuickAction());
+            }
+        }
+    });
+    window.addEventListener('keyup', e => {
+        keys[e.key] = false;
+        let k = e.key.toLowerCase();
+        if (state.possession.active) {
+            if (['w', 'a', 's', 'd'].includes(k)) state.possession.keys[k] = false;
+        }
+    });
     
     canvas.addEventListener('mousedown', e => {
-        if (e.button === 2 || e.button === 1 || keys[' ']) { 
+        if (e.button === 2) {
+            if (state.possession.active) {
+                let { x, y } = getWorldPos(e);
+                state.possession.targetX = x;
+                state.possession.targetY = y;
+            } else {
+                state.isCameraDragging = true;
+                state.camDragStartX = e.clientX;
+                state.camDragStartY = e.clientY;
+            }
+        } else if (e.button === 1 || keys[' ']) { 
             state.isCameraDragging = true;
             state.camDragStartX = e.clientX;
             state.camDragStartY = e.clientY;
@@ -75,11 +106,13 @@ export function setupInput() {
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     
     setInterval(() => {
-        let speed = 10 / state.camera.zoom;
-        if (keys['w'] || keys['W']) state.camera.y += speed * state.camera.zoom;
-        if (keys['s'] || keys['S']) state.camera.y -= speed * state.camera.zoom;
-        if (keys['a'] || keys['A']) state.camera.x += speed * state.camera.zoom;
-        if (keys['d'] || keys['D']) state.camera.x -= speed * state.camera.zoom;
+        if (!state.possession.active) {
+            let speed = 10 / state.camera.zoom;
+            if (keys['w'] || keys['W']) state.camera.y += speed * state.camera.zoom;
+            if (keys['s'] || keys['S']) state.camera.y -= speed * state.camera.zoom;
+            if (keys['a'] || keys['A']) state.camera.x += speed * state.camera.zoom;
+            if (keys['d'] || keys['D']) state.camera.x -= speed * state.camera.zoom;
+        }
     }, 16);
     
     document.getElementById('btn-reset-cam').addEventListener('click', () => {
@@ -91,26 +124,61 @@ function handleCanvasClick(e, isDrag = false) {
     let { x, y, wx, wy } = getWorldPos(e);
     if (x<0 || x>=COLS || y<0 || y>=ROWS) return;
     
-    let isInspectTab = document.querySelector('.tab-btn[data-target="tab-inspect"]').classList.contains('active');
-    if (isInspectTab && !isDrag) {
+    if (!state.currentTool && !isDrag) {
+        // Auto-switch to inspect tab if no tool selected
+        let inspectBtn = document.querySelector('.tab-btn[data-target="tab-inspect"]');
+        if (inspectBtn) inspectBtn.click();
         inspectObject(x, y, wx, wy);
+        return; 
     }
 
     if (state.god.divinePower < 1 && ['bless','curse','heal','fertile','purify','mua','set','bao','plague','volcano','meteor'].includes(state.currentTool)) return;
 
-    if (state.currentTool === 'dat') { state.grid[x][y] = TERRAIN.DAT; state.envGrid[x][y].biome = "Đồng cỏ"; }
-    else if (state.currentTool === 'nuoc') { state.grid[x][y] = TERRAIN.NUOC; state.envGrid[x][y].biome = "Nước"; }
-    else if (state.currentTool === 'rung') { state.grid[x][y] = TERRAIN.RUNG; state.envGrid[x][y].biome = "Rừng"; }
-    else if (state.currentTool === 'nui') { state.grid[x][y] = TERRAIN.NUI; state.envGrid[x][y].biome = "Núi"; }
+    let brushSize = parseInt(document.getElementById('brush-size') ? document.getElementById('brush-size').value : 1);
+    
+    let applyTerrain = (tx, ty, terrainType, biomeName) => {
+        if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
+            state.grid[tx][ty] = terrainType;
+            state.envGrid[tx][ty].biome = biomeName;
+            if (biomeName === 'Đồng cỏ') state.envGrid[tx][ty].fertility = 50;
+            else if (biomeName === 'Rừng') state.envGrid[tx][ty].fertility = 80;
+            else if (biomeName === 'Đầm lầy') state.envGrid[tx][ty].fertility = 30;
+            else if (biomeName === 'Nước') state.envGrid[tx][ty].fertility = 10;
+            else state.envGrid[tx][ty].fertility = 0;
+        }
+    };
+
+    let brushApply = (terrainType, biomeName) => {
+        for(let i = -Math.floor(brushSize/2); i <= Math.floor(brushSize/2); i++) {
+            for(let j = -Math.floor(brushSize/2); j <= Math.floor(brushSize/2); j++) {
+                if (Math.hypot(i, j) <= brushSize/2) applyTerrain(x + i, y + j, terrainType, biomeName);
+            }
+        }
+    };
+
+    if (state.currentTool === 'dat') brushApply(TERRAIN.DAT, "Đồng cỏ");
+    else if (state.currentTool === 'nuoc') brushApply(TERRAIN.NUOC, "Nước");
+    else if (state.currentTool === 'rung') brushApply(TERRAIN.RUNG, "Rừng");
+    else if (state.currentTool === 'nui') brushApply(TERRAIN.NUI, "Núi");
+    else if (state.currentTool === 'cat') brushApply(TERRAIN.CAT, "Sa mạc");
+    else if (state.currentTool === 'tuyet') brushApply(TERRAIN.TUYET, "Tuyết");
+    else if (state.currentTool === 'damlay') brushApply(TERRAIN.DAM_LAY, "Đầm lầy");
     else if (state.currentTool === 'xoa') {
-        let nIdx = state.npcs.findIndex(n => Math.abs(n.x - x) <= 1 && Math.abs(n.y - y) <= 1);
-        if (nIdx !== -1) state.npcs.splice(nIdx, 1);
-        let hIdx = state.houses.findIndex(h => h.x === x && h.y === y);
-        if (hIdx !== -1) state.houses.splice(hIdx, 1);
-        let bIdx = state.buildings.findIndex(b => b.x === x && b.y === y);
-        if (bIdx !== -1) state.buildings.splice(bIdx, 1);
-        let fIdx = state.foods.findIndex(f => f.x === x && f.y === y);
-        if (fIdx !== -1) state.foods.splice(fIdx, 1);
+        for(let i = -Math.floor(brushSize/2); i <= Math.floor(brushSize/2); i++) {
+            for(let j = -Math.floor(brushSize/2); j <= Math.floor(brushSize/2); j++) {
+                if (Math.hypot(i, j) <= brushSize/2) {
+                    let tx = x + i, ty = y + j;
+                    let nIdx = state.npcs.findIndex(n => Math.abs(n.x - tx) <= 1 && Math.abs(n.y - ty) <= 1);
+                    if (nIdx !== -1) state.npcs.splice(nIdx, 1);
+                    let hIdx = state.houses.findIndex(h => h.x === tx && h.y === ty);
+                    if (hIdx !== -1) state.houses.splice(hIdx, 1);
+                    let bIdx = state.buildings.findIndex(b => b.x === tx && b.y === ty);
+                    if (bIdx !== -1) state.buildings.splice(bIdx, 1);
+                    let fIdx = state.foods.findIndex(f => f.x === tx && f.y === ty);
+                    if (fIdx !== -1) state.foods.splice(fIdx, 1);
+                }
+            }
+        }
     }
     else if (state.currentTool === 'nguoi' && !isDrag) {
         if (state.grid[x][y] !== TERRAIN.NUOC && state.grid[x][y] !== TERRAIN.NUI) {

@@ -7,7 +7,7 @@ export function spawnFood() {
     for (let x=0; x<COLS; x++) { 
         for (let y=0; y<ROWS; y++) { 
             let env = state.envGrid[x][y];
-            if ((env.biome === "Đồng cỏ" || env.biome === "Rừng") && env.fertility > 20) {
+            if ((env.biome === "Đồng cỏ" || env.biome === "Rừng") && env.fertility >= 10) {
                 // Tăng tỷ lệ mọc food x10 so với bản cũ
                 if (Math.random() < 0.005 && !state.foods.find(f=>f.x===x&&f.y===y)) state.foods.push({x,y});
             }
