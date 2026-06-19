@@ -161,6 +161,17 @@ export function setupUIEvents() {
             import('./main.js').then(m => m.clearMapToWater());
         }
     });
+    
+    let btnReseed = document.getElementById('btn-reseed');
+    if (btnReseed) {
+        btnReseed.addEventListener('click', () => {
+            if (confirm("Hành động này sẽ xóa các mỏ tài nguyên thô hiện tại và mọc lại toàn bộ tài nguyên mới trên khắp bản đồ. Bạn có chắc không?")) {
+                state.resources = [];
+                import('./systems/ecosystemSystem.js').then(m => m.initResources());
+            }
+        });
+    }
+
     document.getElementById('btn-guide')?.addEventListener('click', () => {
         document.getElementById('guide-modal')?.classList.remove('hidden');
     });

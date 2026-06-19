@@ -27,36 +27,34 @@ export function spawnResource(x, y, resId, amount) {
     });
 }
 
-export function initResources() {
+export function spawnResourceOnTile(x, y, biome, chanceMultiplier = 1.0) {
     let rawResources = Object.values(RESOURCES).filter(r => r.raw);
     
+    // Tỷ lệ cơ bản là 2%, có thể nhân lên nếu vẽ bằng tay
+    if (Math.random() < 0.02 * chanceMultiplier) { 
+        let possibleRes = rawResources.filter(r => r.biomes.includes(biome));
+        
+        if (possibleRes.length > 0) {
+            let chosen = possibleRes[Math.floor(Math.random() * possibleRes.length)];
+            
+            let spawnChance = 1.0;
+            if (chosen.renewable === 'Hiếm') spawnChance = 0.2;
+            if (chosen.renewable === 'Rất hiếm') spawnChance = 0.05;
+            if (chosen.renewable === 'Cực kỳ hiếm' || chosen.renewable === 'Cực hiếm') spawnChance = 0.01;
+            
+            if (Math.random() < spawnChance) {
+                let amount = 100 + Math.floor(Math.random() * 400); // 100 - 500 unit
+                spawnResource(x, y, chosen.id, amount);
+            }
+        }
+    }
+}
+
+export function initResources() {
     for (let x = 0; x < COLS; x++) {
         for (let y = 0; y < ROWS; y++) {
             if (state.envGrid[x] && state.envGrid[x][y]) {
-                let biome = state.envGrid[x][y].biome;
-                let isWater = state.grid[x] && state.grid[x][y] === TERRAIN.NUOC;
-                
-                // Mỗi ô có tỷ lệ nhỏ sinh ra mỏ tài nguyên thô
-                if (Math.random() < 0.02) { 
-                    // Lọc ra các tài nguyên phù hợp với biome này
-                    let possibleRes = rawResources.filter(r => r.biomes.includes(biome));
-                    
-                    if (possibleRes.length > 0) {
-                        // Chọn 1 tài nguyên ngẫu nhiên
-                        let chosen = possibleRes[Math.floor(Math.random() * possibleRes.length)];
-                        
-                        // Độ hiếm ảnh hưởng tỷ lệ xuất hiện thực tế
-                        let spawnChance = 1.0;
-                        if (chosen.renewable === 'Hiếm') spawnChance = 0.2;
-                        if (chosen.renewable === 'Rất hiếm') spawnChance = 0.05;
-                        if (chosen.renewable === 'Cực kỳ hiếm' || chosen.renewable === 'Cực hiếm') spawnChance = 0.01;
-                        
-                        if (Math.random() < spawnChance) {
-                            let amount = 100 + Math.floor(Math.random() * 400); // 100 - 500 unit
-                            spawnResource(x, y, chosen.id, amount);
-                        }
-                    }
-                }
+                spawnResourceOnTile(x, y, state.envGrid[x][y].biome, 1.0);
             }
         }
     }

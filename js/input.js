@@ -5,6 +5,7 @@ import { COLS, ROWS, TERRAIN, WORLD_WIDTH, WORLD_HEIGHT } from './config.js';
 import { playSound } from './utils.js';
 import { createNpc } from './entities/npc.js';
 import { spawnEffect } from './systems/godPowerSystem.js';
+import { spawnResourceOnTile } from './systems/ecosystemSystem.js';
 import { inspectObject } from './ui.js';
 
 export const keys = {};
@@ -143,6 +144,14 @@ function handleCanvasClick(e, isDrag = false) {
         if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
             state.grid[tx][ty] = terrainType;
             state.envGrid[tx][ty].biome = biomeName;
+            
+            // Xóa tài nguyên cũ trên ô đó nếu có
+            let resIdx = state.resources.findIndex(r => r.x === tx && r.y === ty);
+            if (resIdx !== -1) state.resources.splice(resIdx, 1);
+            
+            // Tỷ lệ sinh tài nguyên cao hơn khi vẽ tay (x3 = 6%)
+            spawnResourceOnTile(tx, ty, biomeName, 3.0);
+
             if (biomeName === 'Đồng cỏ') state.envGrid[tx][ty].fertility = 50;
             else if (biomeName === 'Rừng') state.envGrid[tx][ty].fertility = 80;
             else if (biomeName === 'Đầm lầy') state.envGrid[tx][ty].fertility = 30;
