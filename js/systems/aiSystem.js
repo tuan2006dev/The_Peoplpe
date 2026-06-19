@@ -29,7 +29,7 @@ export function determineJob(npc) {
     
     if (Math.random() < 0.05 || npc.job === "Vô nghiệp") {
         if (getTribeFood(t) < 50) npc.job = "Nông dân";
-        else if (getTribeWood(t) < 50) npc.job = "Thợ xây";
+        else if (getTribeWood(t) < 50) npc.job = "Thợ mộc";
         else npc.job = "Thợ xây";
     }
 }
@@ -117,8 +117,32 @@ export function executeState(npc) {
             break;
         case STATES.SEEKING_WOOD:
             let wx = Math.round(npc.x); let wy = Math.round(npc.y);
-            if(wx>=0 && wx<COLS && wy>=0 && wy<ROWS && state.grid[wx][wy] === TERRAIN.RUNG) { npc.state = STATES.CHOPPING_WOOD; npc.actionWait = 120; }
-            else moveRandom(npc);
+            if (wx>=0 && wx<COLS && wy>=0 && wy<ROWS && state.grid[wx][wy] === TERRAIN.RUNG) { 
+                npc.state = STATES.CHOPPING_WOOD; npc.actionWait = 120; 
+            } else {
+                // Find nearest wood within radius 20
+                let foundWood = false;
+                let minDist = 999;
+                let targetWX = -1, targetWY = -1;
+                for (let r = 1; r <= 20; r++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        for (let dy = -r; dy <= r; dy++) {
+                            if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                            let cx = wx + dx; let cy = wy + dy;
+                            if (cx>=0 && cx<COLS && cy>=0 && cy<ROWS && state.grid[cx][cy] === TERRAIN.RUNG) {
+                                let dist = Math.hypot(dx, dy);
+                                if (dist < minDist) { minDist = dist; targetWX = cx; targetWY = cy; foundWood = true; }
+                            }
+                        }
+                    }
+                    if (foundWood) break; // found nearest in this radius ring
+                }
+                if (foundWood) {
+                    moveTowards(npc, targetWX, targetWY);
+                } else {
+                    moveRandom(npc); // Only wander if no forest nearby
+                }
+            }
             break;
         case STATES.CHOPPING_WOOD:
             let cx = Math.round(npc.x); let cy = Math.round(npc.y);

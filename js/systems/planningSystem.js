@@ -55,6 +55,7 @@ function getWorkScore(npc) {
     if (npc.dailyRoutine === ROUTINES.MORNING || npc.dailyRoutine === ROUTINES.NOON) score += 40;
     if (npc.ambition > 70) score += 20;
     if (npc.kingdomId) score += 20; // Kingdoms demand resources
+    if (!npc.homeId && !npc.tribeId) score += 60; // Homeless people prioritize building a home
     return score;
 }
 
