@@ -63,6 +63,7 @@ function _processVolcano(disaster) {
 
     // Sự kiện lịch sử khi mới phun (life gần max)
     if (disaster.life === 95) {
+        state.bossTracking.volcanoEruptions++;
         addWorldEvent('Disaster', 'Historic', `🌋 Núi lửa phun trào tại (${disaster.x}, ${disaster.y})`,
             'Một ngọn núi lửa bùng phát dữ dội, thiêu đốt mọi thứ xung quanh!');
     }

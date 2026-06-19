@@ -18,13 +18,17 @@ export function updateTribeLogic() {
             let tName = TRIBE_NAMES[Math.floor(Math.random() * TRIBE_NAMES.length)];
             let membersIds = nearbyGroup.map(n => n.id);
             
+            let lx = Math.round(leader.x);
+            let ly = Math.round(leader.y);
+            
             let tribe = { 
-                id: tId, name: tName, x: leader.x, y: leader.y, leaderId: leader.id, members: membersIds, houses: [], level: 'Trại nhỏ', foodStorage: 0, woodStorage: 0, maxStorage: 50, faith: 50, culture: 10, foundedYear: state.time.year, color: TRIBE_COLORS[tId % TRIBE_COLORS.length], radius: 10,
+                id: tId, name: tName, x: lx, y: ly, leaderId: leader.id, members: membersIds, houses: [], level: 'Trại nhỏ', foodStorage: 0, woodStorage: 0, maxStorage: 50, faith: 50, culture: 10, foundedYear: state.time.year, color: TRIBE_COLORS[tId % TRIBE_COLORS.length], radius: 10,
                 ageLevel: AGES[0], researchPoints: 0, culturePoints: 0, educationLevel: 0, innovationRate: 1.0, unlockedTechs: [], currentResearchId: null, diplomacy: {}, warCooldowns: {},
-                territoryTiles: [{x: leader.x, y: leader.y}], borderQueue: [{x: leader.x, y: leader.y}]
+                territoryTiles: [{x: lx, y: ly}], borderQueue: [{x: lx, y: ly}],
+                raceId: leader.raceId
             };
             
-            if(state.territoryGrid[leader.x] && state.territoryGrid[leader.x][leader.y] === null) state.territoryGrid[leader.x][leader.y] = tId;
+            if(state.territoryGrid[lx] && state.territoryGrid[lx][ly] === null) state.territoryGrid[lx][ly] = tId;
             
             nearbyGroup.forEach(n => n.tribeId = tId);
             nearbyHouses.forEach(h => {
@@ -61,21 +65,7 @@ export function updateTribeLogic() {
             t.woodStorage-=30; t.maxStorage=200; state.buildings.push({ id: ++state.buildingIdCounter, type: 'storage', x: t.x+1, y: t.y, tribeId: t.id });
         }
         
-        // War cooldowns
-        for (let enemyId in t.warCooldowns) {
-            if (t.warCooldowns[enemyId] > 0) {
-                t.warCooldowns[enemyId]--;
-                if (t.warCooldowns[enemyId] === 0) {
-                    t.diplomacy[enemyId] = 'truce';
-                    let enemyTribe = state.tribes.find(tr => tr.id == enemyId);
-                    if (enemyTribe) {
-                        enemyTribe.diplomacy[t.id] = 'truce';
-                        enemyTribe.warCooldowns[t.id] = 0;
-                        addWorldEvent('Peace', 'Historic', `Hiệp ước đình chiến`, `Sau một thời gian dài giao tranh đẫm máu, ${t.name} và ${enemyTribe.name} đã chấp nhận ký hiệp ước đình chiến, lập lại hòa bình.`);
-                    }
-                }
-            }
-        }
+        // Removed old war cooldowns in favor of diplomacySystem.js
     });
 
     // Territory Expansion using Flood Fill (Throttled)
@@ -101,17 +91,12 @@ export function updateTribeLogic() {
                                     stillHasSpace = true;
                                 } else if (ownerId !== t.id) {
                                     // Hit another tribe's border
-                                    if (!t.diplomacy[ownerId]) {
+                                    if (t.relations && t.relations[ownerId] !== undefined) {
                                         let otherTribe = state.tribes.find(tr => tr.id === ownerId);
                                         if (otherTribe) {
-                                            if (Math.random() < 0.5) {
-                                                t.diplomacy[ownerId] = 'war'; otherTribe.diplomacy[t.id] = 'war';
-                                                t.warCooldowns[ownerId] = 1800; otherTribe.warCooldowns[t.id] = 1800;
-                                                addWorldEvent('War', 'Important', `Chiến tranh bộ lạc nổ ra`, `Việc tranh giành lãnh thổ giáp ranh đã khiến ${t.name} và ${otherTribe.name} khai chiến!`);
-                                            } else {
-                                                t.diplomacy[ownerId] = 'alliance'; otherTribe.diplomacy[t.id] = 'alliance';
-                                                addWorldEvent('Alliance', 'Important', `Liên minh bộ lạc`, `Biên giới đã chạm nhau, thay vì đổ máu, ${t.name} và ${otherTribe.name} đã ký kết liên minh hòa bình.`);
-                                            }
+                                            // Xung đột biên giới làm giảm quan hệ
+                                            t.relations[ownerId] -= 2;
+                                            otherTribe.relations[t.id] -= 2;
                                         }
                                     }
                                 }

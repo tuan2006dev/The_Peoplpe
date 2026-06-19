@@ -3,6 +3,7 @@ import { STATES, RELATION } from '../data/constants.js';
 import { TERRAIN, COLS, ROWS } from '../config.js';
 import { moveRandom, moveTowards } from '../utils.js';
 import { updatePlanning } from './planningSystem.js';
+import { ENTITY_DATA } from '../data/races.js';
 
 export function determineBelief(npc) {
     npc.faith -= 0.1;
@@ -44,8 +45,18 @@ export function determineState(npc) {
     // Check for enemies
     if (npc.tribeId) {
         let t = state.tribes.find(tr => tr.id === npc.tribeId);
-        if (t && t.diplomacy) {
-            let enemyNear = state.npcs.find(n => n.id !== npc.id && n.tribeId && t.diplomacy[n.tribeId] === 'war' && Math.hypot(n.x - npc.x, n.y - npc.y) <= 8 && n.health > 0);
+        if (t && t.diplomaticStatus) {
+            let enemyNear = state.npcs.find(n => n.id !== npc.id && n.tribeId && t.diplomaticStatus[n.tribeId] === 'war' && Math.hypot(n.x - npc.x, n.y - npc.y) <= 8 && n.health > 0);
+            
+            // Aggression affect behavior
+            let raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
+            let aggro = raceData ? raceData.baseStats.aggression : 5;
+            
+            // Nếu aggression cao, có thể tấn công cả người lạ chưa có quan hệ ngoại giao (neutral) nếu ở gần
+            if (!enemyNear && aggro >= 8) {
+                enemyNear = state.npcs.find(n => n.id !== npc.id && n.tribeId && n.tribeId !== npc.tribeId && Math.hypot(n.x - npc.x, n.y - npc.y) <= 5 && n.health > 0);
+            }
+
             if (enemyNear) {
                 npc.state = STATES.ATTACKING;
                 npc.targetEnemyId = enemyNear.id;
@@ -86,8 +97,24 @@ export function executeState(npc) {
             break;
         case STATES.CHOPPING_WOOD:
             let cx = Math.round(npc.x); let cy = Math.round(npc.y);
-            npc.wood += 5; 
+            let raceDataChop = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
+            let chopAmount = (raceDataChop && raceDataChop.id === 'dwarf') ? 8 : 5; // Dwarf bonus
+            npc.wood += chopAmount; 
+            
             if(cx>=0 && cx<COLS && cy>=0 && cy<ROWS) {
+                if (state.grid[cx][cy] === TERRAIN.RUNG) {
+                    state.bossTracking.forestsChopped++;
+                    // Elf/Dryad ghét việc chặt rừng
+                    if (npc.tribeId) {
+                        state.tribes.forEach(t => {
+                            if ((t.raceId === 'elf' || t.raceId === 'dryad') && t.id !== npc.tribeId) {
+                                if (t.relations && t.relations[npc.tribeId] !== undefined) {
+                                    t.relations[npc.tribeId] -= 0.5;
+                                }
+                            }
+                        });
+                    }
+                }
                 state.grid[cx][cy] = TERRAIN.DAT; state.envGrid[cx][cy].biome = "Đồng cỏ"; 
             }
             npc.state = npc.tribeId ? STATES.GATHERING_FOR_TRIBE : STATES.WANDERING;

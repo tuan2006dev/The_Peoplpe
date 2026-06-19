@@ -9,6 +9,12 @@ import { updateDailyLogic, updateNpcsTick } from './systems/npcSystem.js';
 import { rebuildSpatialGrid } from './systems/worldSystem.js';
 import { updateTribeLogic } from './systems/tribeSystem.js';
 import { updateKingdomLogic } from './systems/kingdomSystem.js';
+import { updateDiplomacy } from './systems/diplomacySystem.js';
+import { updateMonsters } from './systems/monsterSystem.js';
+import { updateNeutrals } from './systems/neutralSystem.js';
+import { updateEcosystem } from './systems/ecosystemSystem.js';
+import { updateSpirits } from './systems/spiritSystem.js';
+import { updateBosses } from './systems/bossSystem.js';
 import { updateGodLogic } from './systems/godPowerSystem.js';
 import { updateTechnologyLogic } from './systems/technologySystem.js';
 import { updateTradeLogic } from './systems/tradeSystem.js';
@@ -89,6 +95,13 @@ function gameLoop(timestamp) {
             updateTechnologyLogic(); updateTradeLogic(); updateWarLogic(); updateReligionLogic();
             updateDisasterLogic(); updateEnvironmentLogic(); updateFamilyLogic();
         }
+        
+        updateDiplomacy();
+        updateMonsters();
+        updateNeutrals();
+        updateEcosystem();
+        updateSpirits();
+        updateBosses();
         
         for (let j = state.effects.length - 1; j >= 0; j--) {
             let e = state.effects[j]; e.life--;

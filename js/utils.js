@@ -1,5 +1,6 @@
 import { state } from './gameState.js';
 import { COLS, ROWS } from './config.js';
+import { ENTITY_DATA } from './data/races.js';
 
 export function playSound(name) {
     if (state.settings.sound) {
@@ -40,8 +41,16 @@ export function moveRandom(npc) {
     let ny = Math.round(npc.y) + (Math.random()<0.5?-1:1);
     let canMoveWater = npc.kingdomId !== null;
     
+    let raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
+    let validTerrain = raceData ? raceData.terrainAffinity : null;
+
     if(nx>=0&&nx<COLS&&ny>=0&&ny<ROWS && state.grid[nx] && state.grid[nx][ny]!==3) { 
-        if (state.grid[nx][ny]===1 && !canMoveWater) return;
+        let targetTerrain = state.grid[nx][ny];
+        
+        // Terrain Affinity
+        if (validTerrain && validTerrain.length > 0 && !validTerrain.includes(targetTerrain)) return;
+
+        if (targetTerrain===1 && !canMoveWater && (!validTerrain || !validTerrain.includes(1))) return;
         moveTowards(npc, nx, ny);
     }
 }

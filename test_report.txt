@@ -1,0 +1,24 @@
+=== BẮT ĐẦU AUTO TEST TOÀN DIỆN ===
+Map đã khởi tạo với 24000 ô Đất.
+Đã spawn 40 NPC, cấp nhà và ghép đôi để tạo điều kiện lập Bộ lạc.
+Chạy mô phỏng 3000 ticks để quan sát sự hình thành Bộ lạc...
+- Số NPC sống sót: 39
+- Số Bộ lạc (Tribes): 1
+[PASS] Cơ chế AI sinh tồn và lập Bộ lạc hoạt động tốt.
+Kiểm tra Cơ chế Ngoại giao (Diplomacy)...
+- Số mối quan hệ ngoại giao đã được thiết lập: 0
+Kiểm tra Thảm họa tự nhiên & Boss Titan Đá...
+[PASS] Boss Titan Đá đã thức tỉnh sau 10 lần núi lửa phun trào.
+Kiểm tra Quái vật Thần Thoại (Tier 3) & Lữ Khách Trung Lập (Tier 4)...
+- Số lượng Quái vật bảo vệ lãnh thổ: 5
+- Số lượng Thực thể Trung Lập (Thương nhân/Học giả): 5
+[PASS] Hệ thống spawn Quái vật hoạt động.
+[PASS] Hệ thống Thực thể Trung lập lang thang hoạt động.
+Kiểm tra Hệ sinh thái Động vật (Tier 5)...
+- Số lượng Động vật: 62
+[PASS] Động vật hoang dã tự động sinh sôi trên bản đồ.
+Kiểm tra Hệ thống Tâm linh (Tier 6)...
+[PASS] Oán khí tụ tập -> Linh hồn (Ghost) đã xuất hiện.
+Kiểm tra Boss Thực Thể Hư Không (Tier 7) khi spam phép...
+[PASS] Thực Thể Hư Không đã xé rách không gian xuất hiện.
+=== TEST HOÀN TẤT ===

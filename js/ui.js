@@ -3,6 +3,7 @@ import { STATES_TEXT, STATES } from './data/constants.js';
 import { centerCamera } from './camera.js';
 import { TILE_SIZE } from './config.js';
 import { saveGame, loadSaveData, getSaveData } from './saveLoad.js';
+import { ENTITY_DATA } from './data/races.js';
 
 export function setupUIEvents() {
     document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -129,7 +130,7 @@ export function setupUIEvents() {
     
     document.getElementById('btn-save').addEventListener('click', saveGame);
     document.getElementById('btn-load').addEventListener('click', () => {
-        let s = localStorage.getItem('thePeopleSaveV11');
+        let s = localStorage.getItem('thePeopleSaveV12') || localStorage.getItem('thePeopleSaveV11');
         if (s) loadSaveData(s); else alert("Không có dữ liệu save.");
     });
     document.getElementById('btn-export').addEventListener('click', () => {
@@ -152,9 +153,10 @@ export function inspectObject(tx, ty, wx, wy) {
     let found = null; let desc = "";
     let np = state.npcs.find(n => Math.hypot(n.x - tx, n.y - ty) <= 1);
     if (np) {
-        found = np; 
+        found = np;
+        let raceName = ENTITY_DATA.find(r => r.id === np.raceId)?.name || np.raceId;
         desc = `<b>${np.name}</b> (Tuổi: ${Math.floor(np.age)}) ${np.favorite ? '⭐' : ''}<br>
-                Chủng tộc: ${np.race} | Nghề: ${np.job}<br>
+                Chủng tộc: ${raceName} | Nghề: ${np.job}<br>
                 Đặc điểm: ${np.traits ? np.traits.join(', ') : 'Không'}<br>
                 Máu: ${Math.floor(np.health)}/100 | Năng lượng: ${Math.floor(np.energy)}<br>
                 Trạng thái: ${STATES_TEXT[np.state]||np.state}<br>

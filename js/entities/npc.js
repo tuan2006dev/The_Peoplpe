@@ -11,7 +11,7 @@ export function createNpc(tx, ty, fatherId = null, motherId = null) {
         tribeId: null, homeId: null, partnerId: null, childrenIds: [],
         fatherId: fatherId, motherId: motherId,
         // --- Version 14 Traits & Race ---
-        race: fatherId ? state.npcs.find(n=>n.id===fatherId).race : ['Nhân loại', 'Tiên', 'Người thú', 'Người lùn'][Math.floor(Math.random()*4)],
+        raceId: fatherId ? (state.npcs.find(n=>n.id===fatherId)?.raceId || 'human') : ['human', 'elf', 'orc', 'dwarf', 'goblin', 'merfolk'][Math.floor(Math.random()*6)],
         traits: [],
         
         intelligence: 50 + Math.random()*50, bravery: 50 + Math.random()*50,

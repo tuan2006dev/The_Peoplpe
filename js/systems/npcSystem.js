@@ -51,9 +51,14 @@ export function updateDailyLogic() {
         if(npc.energy<0) npc.energy=0; if(npc.health>100) npc.health=100;
         
         if (npc.health <= 0) {
+            let cx = Math.floor(npc.x); let cy = Math.floor(npc.y);
+            if (state.grid[cx] && state.grid[cx][cy] === 1) state.bossTracking.waterCorpses++;
+
             if (npc.id === state.selectedNpcId) state.selectedNpcId = null;
             if (npc.homeId) { let h = state.houses.find(x=>x.id===npc.homeId); if(h) h.ownerId = null; }
             state.deadNpcs.push(npc);
+            
+            import('./spiritSystem.js').then(s => s.registerDeath(npc.x, npc.y));
             
             import('./memorySystem.js').then(m => {
                 let p = npc.partnerId ? state.npcs.find(x=>x.id===npc.partnerId) : null;

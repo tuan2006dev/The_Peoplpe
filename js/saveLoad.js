@@ -14,15 +14,43 @@ export function loadSaveData(json) {
             alert("File save không hợp lệ hoặc bị hỏng!");
             return;
         }
+
+        if (data.saveVersion && data.saveVersion < 11) {
+            alert("Phiên bản save quá cũ, không hỗ trợ nâng cấp tự động.");
+            return;
+        }
+
+        // Migrate from V11 to V12
+        if (!data.saveVersion || data.saveVersion === 11) {
+            console.log("Migrating save from V11 to V12...");
+            if (data.npcs) {
+                data.npcs.forEach(npc => {
+                    let oldRace = npc.race;
+                    if (oldRace === 'Nhân loại') npc.raceId = 'human';
+                    else if (oldRace === 'Người thú') npc.raceId = 'orc';
+                    else if (oldRace === 'Tiên') npc.raceId = 'elf';
+                    else if (oldRace === 'Người lùn') npc.raceId = 'dwarf';
+                    else npc.raceId = 'human';
+                    delete npc.race;
+                });
+            }
+            if (!data.monsters) data.monsters = [];
+            if (!data.neutrals) data.neutrals = [];
+            if (!data.animals) data.animals = [];
+            if (!data.spirits) data.spirits = [];
+            if (!data.bosses) data.bosses = [];
+            data.saveVersion = 12;
+        }
+
         Object.assign(state, data);
-        if (!state.saveVersion) state.saveVersion = 10;
-        // Apply defaults for missing fields if upgrading
+        
+        // Apply defaults for missing fields
         if (!state.storyEvents) state.storyEvents = [];
         if (!state.eventChains) state.eventChains = [];
         if (!state.newspaperArticles) state.newspaperArticles = [];
         if (state.worldDramaScore === undefined) state.worldDramaScore = 0;
         logEvent("Tải game thành công.");
-    } catch(e) { alert("Lỗi khi tải file save!"); }
+    } catch(e) { alert("Lỗi khi tải file save!"); console.error(e); }
 }
 
 export function saveGame() {
