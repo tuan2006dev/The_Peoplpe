@@ -60,6 +60,22 @@ export function setupUIEvents() {
         state.settings.sound = !state.settings.sound;
         e.target.innerText = state.settings.sound ? '🔊' : '🔇';
     });
+
+    let btnToggleLeft = document.getElementById('btn-toggle-left');
+    if (btnToggleLeft) {
+        btnToggleLeft.addEventListener('click', () => {
+            let sidebar = document.getElementById('left-sidebar');
+            if (sidebar) sidebar.classList.toggle('collapsed');
+        });
+    }
+
+    let btnToggleRight = document.getElementById('btn-toggle-right');
+    if (btnToggleRight) {
+        btnToggleRight.addEventListener('click', () => {
+            let sidebar = document.getElementById('right-sidebar');
+            if (sidebar) sidebar.classList.toggle('collapsed');
+        });
+    }
     
     ['grid', 'names', 'territory', 'effects', 'pause-ending', 'autosave', 'debug', 'sound'].forEach(s => {
         let el = document.getElementById(`set-${s}`);

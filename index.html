@@ -9,7 +9,10 @@
 <body>
     <!-- Top Bar -->
     <header id="top-bar">
-        <div class="top-title">THE PEOPLE</div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <button class="icon-btn" id="btn-toggle-left" title="Đóng/Mở Menu Trái" style="font-size:20px;">☰</button>
+            <div class="top-title">THE PEOPLE</div>
+        </div>
         <div class="top-info">
             <span id="time-display">Năm 1, Tháng 1, Ngày 1</span>
             <span id="season-display" style="color:#2ecc71;">Xuân</span>
@@ -28,6 +31,7 @@
                 <button class="speed-btn" data-speed="1000" style="background:#8e44ad;">MAX</button>
             </div>
             <div id="fps-display">60 FPS</div>
+            <button class="icon-btn" id="btn-toggle-right" title="Đóng/Mở Menu Phải" style="font-size:20px; margin-left:5px;">☰</button>
         </div>
     </header>
 

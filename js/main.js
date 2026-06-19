@@ -185,6 +185,8 @@ export function doOneTick() {
 }
 
 let lastTime = 0;
+let fpsUpdateCounter = 0;
+let fpsDisplayElem = null;
 function gameLoop(timestamp) {
     let dt = timestamp - lastTime; lastTime = timestamp;
     if (dt > 100) dt = 16;
@@ -200,6 +202,13 @@ function gameLoop(timestamp) {
     let t2 = performance.now();
     draw(); 
     let t3 = performance.now();
+    
+    fpsUpdateCounter++;
+    if (fpsUpdateCounter > 15) {
+        if (!fpsDisplayElem) fpsDisplayElem = document.getElementById('fps-display');
+        if (fpsDisplayElem) fpsDisplayElem.innerText = Math.round(1000/dt) + " FPS";
+        fpsUpdateCounter = 0;
+    }
     
     if (state.settings.showDebug) {
         document.getElementById('dbg-fps').innerText = Math.round(1000/dt);
