@@ -37,7 +37,7 @@ async function runAutoTest() {
         state.grid[x]=[]; state.envGrid[x]=[]; state.territoryGrid[x]=[];
         for (let y=0; y<ROWS; y++) {
             state.grid[x][y] = TERRAIN.DAT; 
-            state.envGrid[x][y] = { temperature: 25, humidity: 50, fertility: 50, biome: "Đồng cỏ" };
+            state.envGrid[x][y] = { temperature: 25, humidity: 50, fertility: 50, biome: "Đồng bằng" };
             state.territoryGrid[x][y] = null;
         }
     }

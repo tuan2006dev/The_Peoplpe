@@ -2,6 +2,65 @@ import { state } from '../gameState.js';
 import { ENTITY_DATA, TIER } from '../data/races.js';
 import { COLS, ROWS, TERRAIN } from '../config.js';
 import { moveRandom, moveTowards } from '../utils.js';
+import { RESOURCES } from '../data/resources.js';
+
+export function spawnResource(x, y, resId, amount) {
+    let resData = Object.values(RESOURCES).find(r => r.id === resId);
+    if (!resData) return;
+    
+    // Kiểm tra xem vị trí này đã có tài nguyên chưa
+    let existing = state.resources.find(r => r.x === x && r.y === y);
+    if (existing) {
+        if (existing.id === resId) existing.amount += amount;
+        return;
+    }
+    
+    state.resources.push({
+        id: resId,
+        x: x, y: y,
+        amount: amount,
+        maxAmount: amount, // Dùng để tái tạo
+        name: resData.name,
+        emoji: resData.emoji,
+        type: resData.type,
+        renewable: resData.renewable
+    });
+}
+
+export function initResources() {
+    let rawResources = Object.values(RESOURCES).filter(r => r.raw);
+    
+    for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < ROWS; y++) {
+            if (state.envGrid[x] && state.envGrid[x][y]) {
+                let biome = state.envGrid[x][y].biome;
+                let isWater = state.grid[x] && state.grid[x][y] === TERRAIN.NUOC;
+                
+                // Mỗi ô có tỷ lệ nhỏ sinh ra mỏ tài nguyên thô
+                if (Math.random() < 0.02) { 
+                    // Lọc ra các tài nguyên phù hợp với biome này
+                    let possibleRes = rawResources.filter(r => r.biomes.includes(biome));
+                    
+                    if (possibleRes.length > 0) {
+                        // Chọn 1 tài nguyên ngẫu nhiên
+                        let chosen = possibleRes[Math.floor(Math.random() * possibleRes.length)];
+                        
+                        // Độ hiếm ảnh hưởng tỷ lệ xuất hiện thực tế
+                        let spawnChance = 1.0;
+                        if (chosen.renewable === 'Hiếm') spawnChance = 0.2;
+                        if (chosen.renewable === 'Rất hiếm') spawnChance = 0.05;
+                        if (chosen.renewable === 'Cực kỳ hiếm' || chosen.renewable === 'Cực hiếm') spawnChance = 0.01;
+                        
+                        if (Math.random() < spawnChance) {
+                            let amount = 100 + Math.floor(Math.random() * 400); // 100 - 500 unit
+                            spawnResource(x, y, chosen.id, amount);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 export function spawnAnimal(x, y, raceId) {
     let raceData = ENTITY_DATA.find(r => r.id === raceId);
@@ -22,6 +81,21 @@ export function spawnAnimal(x, y, raceId) {
 }
 
 export function updateEcosystem() {
+    // Tái tạo tài nguyên theo thời gian và mùa vụ
+    if (state.ticks % 100 === 0) {
+        let seasonMultiplier = 1.0;
+        if (state.climate && state.climate.season === 'Đông') seasonMultiplier = 0.1;
+        if (state.climate && state.climate.season === 'Xuân') seasonMultiplier = 1.5;
+        
+        state.resources.forEach(r => {
+            if ((r.renewable === 'Có' || r.renewable === 'Chậm') && r.amount < r.maxAmount) {
+                let regenAmt = r.renewable === 'Có' ? 5 : 1;
+                regenAmt = Math.max(1, Math.floor(regenAmt * seasonMultiplier));
+                r.amount = Math.min(r.maxAmount, r.amount + regenAmt);
+            }
+        });
+    }
+
     if (Math.random() < 0.05 && state.animals.length < 30) {
         let allowed = ENTITY_DATA.filter(r => r.tier === TIER.ANIMAL);
         let r = allowed[Math.floor(Math.random() * allowed.length)];
@@ -48,10 +122,27 @@ export function updateEcosystem() {
         // Reproduction
         if (state.ticks % 15 === 0 && a.gender === 'female' && a.reproductionCooldown <= 0 && a.hunger < 50) {
             let mate = state.animals.find(m => m.raceId === a.raceId && m.gender === 'male' && m.health > 0 && Math.hypot(m.x - a.x, m.y - a.y) <= 2);
-            if (mate && Math.random() < 0.3) {
-                spawnAnimal(a.x, a.y, a.raceId);
-                a.reproductionCooldown = 300;
-                mate.reproductionCooldown = 300;
+            if (mate) {
+                let repChance = 0.3;
+                let nearCamp = false;
+                let nearbyHouses = state.houses.filter(h => Math.hypot(h.x - a.x, h.y - a.y) <= 5);
+                if (nearbyHouses.length > 0) {
+                    for (let h of nearbyHouses) {
+                        let t = state.tribes.find(tr => tr.id === h.tribeId);
+                        if (t && t.foodStorage > 0) {
+                            nearCamp = true;
+                            t.foodStorage -= 1; // Tiêu thụ 1 food của trại
+                            break;
+                        }
+                    }
+                }
+                if (nearCamp) repChance = 0.8; // Boost sinh sản nếu ở gần chuồng trại có thức ăn
+
+                if (Math.random() < repChance) {
+                    spawnAnimal(a.x, a.y, a.raceId);
+                    a.reproductionCooldown = 300;
+                    mate.reproductionCooldown = 300;
+                }
             }
         }
 
@@ -68,6 +159,12 @@ export function updateEcosystem() {
                         moveTowards(a, prey.x, prey.y);
                         return;
                     }
+                } else if (a.hunger > 80) {
+                    // Chết đói / di cư nhanh nếu cạn kiệt mồi
+                    a.health -= 5;
+                    moveRandom(a);
+                    a.actionWait = 0; // Di chuyển liên tục để tìm thức ăn (di cư)
+                    return;
                 }
             }
         } else {

@@ -3,6 +3,7 @@ import { TRIBE_NAMES } from '../data/names.js';
 import { TRIBE_COLORS } from '../config.js';
 import { AGES } from '../data/constants.js';
 import { logEvent, addWorldEvent } from './historySystem.js';
+import { PRODUCTION_CHAINS } from '../data/resources.js';
 
 export function updateTribeLogic() {
     let allUnaffiliated = state.npcs.filter(n => !n.tribeId);
@@ -23,6 +24,7 @@ export function updateTribeLogic() {
             
             let tribe = { 
                 id: tId, name: tName, x: lx, y: ly, leaderId: leader.id, members: membersIds, houses: [], level: 'Trại nhỏ', foodStorage: 0, woodStorage: 0, maxStorage: 50, faith: 50, culture: 10, foundedYear: state.time.year, color: TRIBE_COLORS[tId % TRIBE_COLORS.length], radius: 10,
+                inventory: { wheat: 0, timber: 0, iron_ore: 0, stone: 0, meat: 0 },
                 ageLevel: AGES[0], researchPoints: 0, culturePoints: 0, educationLevel: 0, innovationRate: 1.0, unlockedTechs: [], currentResearchId: null, diplomacy: {}, warCooldowns: {},
                 territoryTiles: [{x: lx, y: ly}], borderQueue: [{x: lx, y: ly}],
                 raceId: leader.raceId
@@ -57,6 +59,7 @@ export function updateTribeLogic() {
             t.borderQueue = [{x: t.x, y: t.y}]; 
             if(state.territoryGrid[t.x] && state.territoryGrid[t.x][t.y] === null) state.territoryGrid[t.x][t.y] = t.id;
         }
+        if (!t.inventory) t.inventory = { wheat: 0, timber: 0, iron_ore: 0, stone: 0, meat: 0 };
         
         t.population = state.npcs.filter(n=>n.tribeId===t.id).length;
         if (t.population >= 20 && t.level === 'Trại nhỏ') { t.level = 'Làng'; t.radius = 15; }
@@ -65,7 +68,38 @@ export function updateTribeLogic() {
             t.woodStorage-=30; t.maxStorage=200; state.buildings.push({ id: ++state.buildingIdCounter, type: 'storage', x: t.x+1, y: t.y, tribeId: t.id });
         }
         
-        // Removed old war cooldowns in favor of diplomacySystem.js
+        // Xây dựng công trình chế biến cơ bản
+        if (t.population >= 30 && t.woodStorage >= 50 && Math.random() < 0.1) {
+            let possibleBuildings = ['Cối xay gió', 'Xưởng cưa', 'Xưởng rèn'];
+            let bType = possibleBuildings[Math.floor(Math.random() * possibleBuildings.length)];
+            if (!state.buildings.find(b => b.tribeId === t.id && b.type === bType)) {
+                t.woodStorage -= 50;
+                state.buildings.push({ id: ++state.buildingIdCounter, type: bType, x: t.x + (Math.random()*2-1), y: t.y + (Math.random()*2-1), tribeId: t.id });
+            }
+        }
+        
+        // Cập nhật Chuỗi Sản Xuất
+        PRODUCTION_CHAINS.forEach(chain => {
+            let hasBuilding = state.buildings.find(b => b.tribeId === t.id && b.type === chain.building);
+            if (hasBuilding) {
+                // Kiểm tra đủ nguyên liệu
+                let canProduce = true;
+                for (let k in chain.inputs) {
+                    if ((t.inventory[k] || 0) < chain.inputs[k]) canProduce = false;
+                }
+                
+                // Nếu đủ, biến đổi 1 chu kỳ
+                if (canProduce) {
+                    for (let k in chain.inputs) t.inventory[k] -= chain.inputs[k];
+                    if (t.inventory[chain.output] === undefined) t.inventory[chain.output] = 0;
+                    t.inventory[chain.output] += 1;
+                    
+                    // Đồng bộ với resource legacy nếu cần
+                    if (chain.output === 'bread' || chain.output === 'wine') t.foodStorage += 1;
+                    if (chain.output === 'planks') t.woodStorage += 1;
+                }
+            }
+        });
     });
 
     // Territory Expansion using Flood Fill (Throttled)

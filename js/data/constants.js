@@ -15,8 +15,39 @@ export const STATES_TEXT = {
     [STATES.REBUILDING]: 'Sửa nhà', [STATES.TREATING_SICK]: 'Chữa bệnh'
 };
 export const RELATION = { SINGLE: 'Độc thân', SEEKING: 'Tìm bạn đời', PARTNERED: 'Có đôi', FAMILY: 'Có gia đình' };
-export const BIOMES = ["Đồng cỏ", "Rừng", "Sa mạc", "Núi", "Đầm lầy", "Tuyết", "Đất chết", "Nước"];
-export const BIOME_COLORS = { "Đồng cỏ": "#2ecc71", "Rừng": "#27ae60", "Sa mạc": "#f1c40f", "Núi": "#7f8c8d", "Đầm lầy": "#8e44ad", "Tuyết": "#ecf0f1", "Đất chết": "#95a5a6", "Nước": "#3498db" };
+export const BIOMES = [
+    "Đồng bằng", "Rừng già", "Sa mạc", "Núi đá", "Băng nguyên", 
+    "Đầm lầy", "Núi lửa", "Đất hoang", "Đồi cỏ", 
+    "Bãi biển", "Rừng ngập mặn", 
+    "Vùng nước nông", "Rạn san hô", "Vùng nước sâu", "Vực thẳm"
+];
+
+export const BIOME_COLORS = { 
+    "Đồng bằng": "#6bc547", "Rừng già": "#1e6823", "Sa mạc": "#f1c40f", 
+    "Núi đá": "#7f8c8d", "Băng nguyên": "#ecf0f1", "Đầm lầy": "#4a5d23", 
+    "Núi lửa": "#c0392b", "Đất hoang": "#555555", "Đồi cỏ": "#8cbd4d", 
+    "Bãi biển": "#f3e5ab", "Rừng ngập mặn": "#2d4c1e", 
+    "Vùng nước nông": "#3498db", "Rạn san hô": "#1abc9c", 
+    "Vùng nước sâu": "#2980b9", "Vực thẳm": "#1a252f" 
+};
+
+export const BIOME_EFFECTS = {
+    "Đồng bằng": { speedMod: 1.0, damageBuff: 0, preferredTribes: ['human', 'halfling', 'centaur'] },
+    "Rừng già": { speedMod: 0.7, damageBuff: 0.2, preferredTribes: ['elf', 'dryad', 'fairy', 'satyr'] },
+    "Sa mạc": { speedMod: 0.6, damageBuff: 0.2, preferredTribes: ['orc', 'goblin'] },
+    "Núi đá": { speedMod: 0.6, damageBuff: 0.2, preferredTribes: ['dwarf', 'troll', 'giant', 'griffin', 'yeti'] },
+    "Băng nguyên": { speedMod: 0.7, damageBuff: 0.2, preferredTribes: ['yeti', 'lycan', 'dwarf'] },
+    "Đầm lầy": { speedMod: 0.5, damageBuff: 0.2, preferredTribes: ['goblin', 'troll', 'lich'] },
+    "Núi lửa": { speedMod: 0.8, damageBuff: 0.2, preferredTribes: ['dragon', 'draconian'] },
+    "Đất hoang": { speedMod: 1.0, damageBuff: 0.2, preferredTribes: ['lich'] },
+    "Đồi cỏ": { speedMod: 1.0, damageBuff: 0.1, preferredTribes: ['halfling', 'human', 'minotaur'] },
+    "Bãi biển": { speedMod: 1.0, damageBuff: 0, preferredTribes: ['merfolk', 'human', 'dwarf'] },
+    "Rừng ngập mặn": { speedMod: 0.6, damageBuff: 0.2, preferredTribes: ['elf', 'dryad', 'goblin', 'merfolk'] },
+    "Vùng nước nông": { speedMod: 0.4, damageBuff: 0.1, preferredTribes: ['merfolk', 'undine'] },
+    "Rạn san hô": { speedMod: 1.2, damageBuff: 0.2, preferredTribes: ['merfolk', 'undine'] },
+    "Vùng nước sâu": { speedMod: 1.0, damageBuff: 0.2, preferredTribes: ['merfolk'] },
+    "Vực thẳm": { speedMod: 1.0, damageBuff: 0.5, preferredTribes: ['lich'] }
+};
 export const SEASONS = ["Xuân", "Hạ", "Thu", "Đông"];
 export const AGES = ["Thời kỳ nguyên thủy", "Thời kỳ bộ lạc", "Thời kỳ nông nghiệp", "Thời kỳ vương quốc", "Thời kỳ trung cổ"];
 

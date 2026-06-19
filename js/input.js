@@ -159,13 +159,40 @@ function handleCanvasClick(e, isDrag = false) {
         }
     };
 
-    if (state.currentTool === 'dat') brushApply(TERRAIN.DAT, "Đồng cỏ");
-    else if (state.currentTool === 'nuoc') brushApply(TERRAIN.NUOC, "Nước");
-    else if (state.currentTool === 'rung') brushApply(TERRAIN.RUNG, "Rừng");
-    else if (state.currentTool === 'nui') brushApply(TERRAIN.NUI, "Núi");
+    if (state.currentTool === 'dat') brushApply(TERRAIN.DAT, "Đồng bằng");
+    else if (state.currentTool === 'nuoc') brushApply(TERRAIN.NUOC, "Vùng nước nông");
+    else if (state.currentTool === 'rung') brushApply(TERRAIN.RUNG, "Rừng già");
+    else if (state.currentTool === 'nui') brushApply(TERRAIN.NUI, "Núi đá");
     else if (state.currentTool === 'cat') brushApply(TERRAIN.CAT, "Sa mạc");
-    else if (state.currentTool === 'tuyet') brushApply(TERRAIN.TUYET, "Tuyết");
+    else if (state.currentTool === 'tuyet') brushApply(TERRAIN.TUYET, "Băng nguyên");
     else if (state.currentTool === 'damlay') brushApply(TERRAIN.DAM_LAY, "Đầm lầy");
+    else if (state.currentTool === 'volcanoland') brushApply(TERRAIN.NUI, "Núi lửa");
+    else if (state.currentTool === 'raise') {
+        for(let i = -Math.floor(brushSize/2); i <= Math.floor(brushSize/2); i++) {
+            for(let j = -Math.floor(brushSize/2); j <= Math.floor(brushSize/2); j++) {
+                if (Math.hypot(i, j) <= brushSize/2) {
+                    let tx = x + i, ty = y + j;
+                    if(tx>=0&&tx<COLS&&ty>=0&&ty<ROWS) {
+                        if(state.grid[tx][ty]===TERRAIN.NUOC) applyTerrain(tx, ty, TERRAIN.DAT, "Bãi biển");
+                        else if(state.grid[tx][ty]===TERRAIN.DAT || state.grid[tx][ty]===TERRAIN.RUNG || state.grid[tx][ty]===TERRAIN.CAT || state.grid[tx][ty]===TERRAIN.DAM_LAY) applyTerrain(tx, ty, TERRAIN.NUI, "Đồi cỏ");
+                    }
+                }
+            }
+        }
+    }
+    else if (state.currentTool === 'lower') {
+        for(let i = -Math.floor(brushSize/2); i <= Math.floor(brushSize/2); i++) {
+            for(let j = -Math.floor(brushSize/2); j <= Math.floor(brushSize/2); j++) {
+                if (Math.hypot(i, j) <= brushSize/2) {
+                    let tx = x + i, ty = y + j;
+                    if(tx>=0&&tx<COLS&&ty>=0&&ty<ROWS) {
+                        if(state.grid[tx][ty]===TERRAIN.NUI) applyTerrain(tx, ty, TERRAIN.DAT, "Đất hoang");
+                        else if(state.grid[tx][ty]===TERRAIN.DAT || state.grid[tx][ty]===TERRAIN.RUNG || state.grid[tx][ty]===TERRAIN.CAT || state.grid[tx][ty]===TERRAIN.DAM_LAY) applyTerrain(tx, ty, TERRAIN.NUOC, "Vùng nước nông");
+                    }
+                }
+            }
+        }
+    }
     else if (state.currentTool === 'xoa') {
         for(let i = -Math.floor(brushSize/2); i <= Math.floor(brushSize/2); i++) {
             for(let j = -Math.floor(brushSize/2); j <= Math.floor(brushSize/2); j++) {
@@ -185,8 +212,16 @@ function handleCanvasClick(e, isDrag = false) {
     }
     else if (state.currentTool === 'nguoi' && !isDrag) {
         if (state.grid[x][y] !== TERRAIN.NUOC && state.grid[x][y] !== TERRAIN.NUI) {
-            createNpc(x, y);
-            playSound("create_person");
+            let raceSel = document.getElementById('spawn-race-select');
+            let race = raceSel ? raceSel.value : 'random';
+            if (race && race.startsWith('boss_')) {
+                let bossId = race.replace('boss_', '');
+                import('./systems/bossSystem.js').then(m => m.spawnBoss(x, y, bossId));
+                playSound("create_person");
+            } else {
+                createNpc(x, y, null, null, race === 'random' ? null : race);
+                playSound("create_person");
+            }
         }
     }
     else if (state.currentTool === 'bless' && !isDrag) { state.god.divinePower-=5; spawnEffect('bless', x, y, 30); playSound("bless"); }

@@ -26,30 +26,35 @@ export function updatePossessionHUD(npc) {
     let spouse = state.npcs.find(n => n.id === npc.partnerId);
     document.getElementById('poss-family').innerText = spouse ? `Vợ/Chồng: ${spouse.name}` : 'Độc thân';
     
-    // Inventory
-    let inv = npc.inventory;
-    document.getElementById('poss-inv').innerHTML = `
-        🍖 Food: ${Math.floor(inv.foodCarried)} | 🪵 Wood: ${Math.floor(inv.wood)} | 💎 Rare: ${inv.rareMaterial}<br>
-        🛠 Tool: ${inv.tool ? 'Có' : 'Không'} | ⚔️ Weapon: ${inv.weapon ? 'Có' : 'Không'} | 💊 Med: ${inv.medicine}
-    `;
-    
-    // Quests
-    let activeQuest = (npc.quests || []).find(q => q.status === 'active');
-    if (activeQuest) {
-        document.getElementById('poss-quest').innerHTML = `<b>${activeQuest.title}</b><br>${activeQuest.objective}`;
-    } else {
-        document.getElementById('poss-quest').innerText = 'Không có';
+    // Stream of Consciousness
+    let logHtml = (npc.personalLog || []).map(log => `<li>${log}</li>`).join('');
+    let logContainer = document.getElementById('poss-thoughts-log');
+    if (logContainer) {
+        let isAtBottom = logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + 1;
+        logContainer.innerHTML = logHtml || '<li>(Tâm trí trống rỗng...)</li>';
+        if (isAtBottom) logContainer.scrollTop = logContainer.scrollHeight;
     }
     
-    // Rels and Mems
-    let relsHtml = (npc.relationships || []).map(r => {
-        let tn = state.npcs.find(x => x.id === r.targetNpcId);
-        return tn ? `${tn.name}: ${r.type} (${Math.floor(r.affection)})` : '';
-    }).filter(x=>x).join('<br>');
-    document.getElementById('poss-rels').innerHTML = relsHtml || 'Chưa quen ai';
-    
-    let memsHtml = (npc.memories || []).slice(-3).map(m => `[Tuổi ${Math.floor(npc.age - (state.time.year - m.year))}] ${m.title}`).join('<br>');
-    document.getElementById('poss-mems').innerHTML = memsHtml || 'Không có ký ức';
-    
-    import('./actionBar.js').then(m => m.updateActionBar(npc));
+    // Bind God Action Buttons if not already bound
+    let btnInspire = document.getElementById('btn-god-inspire');
+    if (btnInspire && !btnInspire.dataset.bound) {
+        btnInspire.dataset.bound = true;
+        btnInspire.addEventListener('click', () => {
+            import('./possessionSystem.js').then(m => m.godActionInspire());
+        });
+    }
+    let btnDream = document.getElementById('btn-god-dream');
+    if (btnDream && !btnDream.dataset.bound) {
+        btnDream.dataset.bound = true;
+        btnDream.addEventListener('click', () => {
+            import('./possessionSystem.js').then(m => m.godActionDream());
+        });
+    }
+    let btnGift = document.getElementById('btn-god-gift');
+    if (btnGift && !btnGift.dataset.bound) {
+        btnGift.dataset.bound = true;
+        btnGift.addEventListener('click', () => {
+            import('./possessionSystem.js').then(m => m.godActionGift());
+        });
+    }
 }

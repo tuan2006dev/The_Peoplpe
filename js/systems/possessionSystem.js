@@ -81,53 +81,29 @@ export function updatePossessionTick() {
         return;
     }
     
-    // Drain Divine Power
-    state.god.divinePower -= 2 / state.time.framesPerDay; // ~2 per second if 60fps
+    // Dòng suy nghĩ (Tự động cập nhật qua HUD)
+    if (Math.random() < 0.02) { // 2% chance per tick to generate a random thought
+        let thought = "";
+        if (npc.hunger > 70) thought = "Bụng réo liên tục... Mình cần tìm thứ gì đó để ăn gấp.";
+        else if (npc.energy < 30) thought = "Mệt quá, muốn chợp mắt một lát.";
+        else if (npc.mood < 30) thought = "Thật là một ngày tồi tệ. Mọi thứ đều nhàm chán.";
+        else if (npc.state === 1) thought = "Phải tìm thức ăn thôi."; // SEEKING_FOOD
+        else if (npc.state === 2) thought = "Ngon quá!"; // EATING
+        else if (npc.state === 5) thought = "Làm việc, làm việc, làm việc... Tương lai sẽ tốt hơn."; // GATHERING
+        else if (npc.state === 8) thought = "Zzz... Zzz..."; // SLEEPING
+        else if (Math.random() < 0.1) thought = "Trời hôm nay thật đẹp.";
+        
+        if (thought !== "" && (!npc.personalLog || npc.personalLog[0]?.indexOf(thought) === -1)) {
+            import('./memorySystem.js').then(m => m.addPersonalLog(npc, thought));
+        }
+    }
+    
+    // Năng lượng giảm dần khi theo dõi
+    state.god.divinePower -= 0.5 / state.time.framesPerDay; 
     if (state.god.divinePower <= 0) {
         state.god.divinePower = 0;
         exitPossession();
         return;
-    }
-    
-    // Move logic
-    let speed = 0.1;
-    let dx = 0; let dy = 0;
-    let keys = state.possession.keys;
-    
-    if (keys.w) dy -= speed;
-    if (keys.s) dy += speed;
-    if (keys.a) dx -= speed;
-    if (keys.d) dx += speed;
-    
-    if (dx !== 0 || dy !== 0) {
-        // Manual move overrides target
-        state.possession.targetX = null;
-        state.possession.targetY = null;
-        
-        let newX = npc.x + dx;
-        let newY = npc.y + dy;
-        
-        if (newX >= 0 && newX < COLS - 1 && newY >= 0 && newY < ROWS - 1) {
-            npc.x = newX;
-            npc.y = newY;
-            npc.walkCycle += 0.3;
-        }
-    } else if (state.possession.targetX !== null && state.possession.targetY !== null) {
-        // Move towards target
-        let ddx = state.possession.targetX - npc.x;
-        let ddy = state.possession.targetY - npc.y;
-        let dist = Math.hypot(ddx, ddy);
-        
-        if (dist > 0.1) {
-            npc.x += (ddx / dist) * speed;
-            npc.y += (ddy / dist) * speed;
-            npc.walkCycle += 0.3;
-        } else {
-            state.possession.targetX = null;
-            state.possession.targetY = null;
-        }
-    } else {
-        npc.walkCycle = 0;
     }
     
     // Lock Camera
@@ -140,28 +116,39 @@ export function updatePossessionTick() {
     import('./personalQuestSystem.js').then(m => m.checkPersonalQuestsTick());
 }
 
-export function handleInteract() {
+export function godActionInspire() {
     if (!state.possession.active) return;
     let npc = state.npcs.find(n => n.id === state.possession.npcId);
-    if (!npc) return;
+    if (!npc || state.god.divinePower < 10) return;
     
-    // Find closest interactable
-    let closestNpc = state.npcs.find(n => n.id !== npc.id && Math.hypot(n.x - npc.x, n.y - npc.y) <= 2);
-    if (closestNpc) {
-        import('./dialogueSystem.js').then(m => m.openDialogue(npc, closestNpc));
-        return;
-    }
-    
-    // If no NPC, try picking up food
-    let food = state.foods.find(f => Math.hypot(f.x - npc.x, f.y - npc.y) <= 2);
-    if (food) {
-        import('./inventorySystem.js').then(m => m.handleAction(npc, 'gather'));
-        return;
-    }
+    state.god.divinePower -= 10;
+    npc.energy = 100;
+    npc.mood = 100;
+    import('./memorySystem.js').then(m => {
+        m.addPersonalLog(npc, "Một luồng cảm hứng mãnh liệt từ hư không tràn vào tâm trí! Mình cảm thấy có thể làm được mọi thứ!");
+    });
 }
 
-export function handleQuickAction() {
+export function godActionDream() {
     if (!state.possession.active) return;
-    let ab = document.getElementById('action-bar');
-    if (ab) ab.classList.toggle('hidden');
+    let npc = state.npcs.find(n => n.id === state.possession.npcId);
+    if (!npc || state.god.divinePower < 20) return;
+    
+    state.god.divinePower -= 20;
+    import('./memorySystem.js').then(m => {
+        m.generateLifeGoal(npc); // Reroll life goal
+        m.addPersonalLog(npc, `Mơ một giấc mơ kỳ lạ... Từ nay mục tiêu của mình là: ${npc.lifeGoal}`);
+    });
+}
+
+export function godActionGift() {
+    if (!state.possession.active) return;
+    let npc = state.npcs.find(n => n.id === state.possession.npcId);
+    if (!npc || state.god.divinePower < 15) return;
+    
+    state.god.divinePower -= 15;
+    npc.hunger = Math.max(0, npc.hunger - 50);
+    import('./memorySystem.js').then(m => {
+        m.addPersonalLog(npc, "Thấy một quả táo vàng rụng ngay trước mặt. Ăn vào thấy no và khỏe hẳn ra!");
+    });
 }

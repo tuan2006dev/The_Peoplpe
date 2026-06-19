@@ -2,7 +2,7 @@ import { state } from '../gameState.js';
 import { STATES, RELATION } from '../data/constants.js';
 import { PERSONALITIES, FIRST_NAMES } from '../data/names.js';
 
-export function createNpc(tx, ty, fatherId = null, motherId = null) {
+export function createNpc(tx, ty, fatherId = null, motherId = null, forcedRaceId = null) {
     let baseName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
     let npc = {
         id: ++state.idCounter, name: `${baseName} ${state.idCounter}`,
@@ -11,7 +11,7 @@ export function createNpc(tx, ty, fatherId = null, motherId = null) {
         tribeId: null, homeId: null, partnerId: null, childrenIds: [],
         fatherId: fatherId, motherId: motherId,
         // --- Version 14 Traits & Race ---
-        raceId: fatherId ? (state.npcs.find(n=>n.id===fatherId)?.raceId || 'human') : ['human', 'elf', 'orc', 'dwarf', 'goblin', 'merfolk'][Math.floor(Math.random()*6)],
+        raceId: forcedRaceId ? forcedRaceId : (fatherId ? (state.npcs.find(n=>n.id===fatherId)?.raceId || 'human') : ['human', 'elf', 'orc', 'dwarf', 'goblin', 'merfolk'][Math.floor(Math.random()*6)]),
         traits: [],
         
         intelligence: 50 + Math.random()*50, bravery: 50 + Math.random()*50,

@@ -73,22 +73,46 @@ function _marchSoldiers(tribe, enemyTribe) {
 
         if (nearestEnemy) {
             const dist = Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y);
-            if (dist <= 1.5) {
+            
+            let engageDist = 1.5;
+            if (soldier.raceId === 'centaur') engageDist = 5;
+
+            if (dist <= engageDist) {
                 // Đã tiếp cận — chuyển sang trạng thái tấn công
                 soldier.state = STATES.ATTACKING;
                 soldier.targetEnemyId = nearestEnemy.id;
             } else if (dist <= 30) {
                 // Trong tầm nhìn — di chuyển về phía địch
                 soldier.state = STATES.WANDERING;
-                soldier.targetX = nearestEnemy.x + (Math.random() - 0.5) * 2;
-                soldier.targetY = nearestEnemy.y + (Math.random() - 0.5) * 2;
+
+                // TACTICS
+                if (soldier.raceId === 'dwarf' && dist > 10 && Math.random() < 0.05) {
+                    // Đào hầm (dịch chuyển tức thời một đoạn)
+                    soldier.x += (nearestEnemy.x - soldier.x) * 0.4;
+                    soldier.y += (nearestEnemy.y - soldier.y) * 0.4;
+                    soldier.actionWait = 10;
+                    if (state.particles) state.particles.push({x: soldier.x*16, y: soldier.y*16, vx:0, vy:0, life:20, type:'smoke', color:'#888'});
+                } else if (soldier.raceId === 'orc') {
+                    // Orc lao thẳng, bỏ qua ngẫu nhiên
+                    soldier.targetX = nearestEnemy.x;
+                    soldier.targetY = nearestEnemy.y;
+                } else if (soldier.raceId === 'centaur' && dist < 3) {
+                    // Hit and run: Lùi lại nếu địch quá gần
+                    soldier.targetX = soldier.x - (nearestEnemy.x - soldier.x);
+                    soldier.targetY = soldier.y - (nearestEnemy.y - soldier.y);
+                } else {
+                    soldier.targetX = nearestEnemy.x + (Math.random() - 0.5) * 2;
+                    soldier.targetY = nearestEnemy.y + (Math.random() - 0.5) * 2;
+                }
             } else {
                 // Quá xa — tiến về phía thủ đô địch
+                soldier.state = STATES.WANDERING;
                 soldier.targetX = enemyTribe.x + (Math.random() * 10 - 5);
                 soldier.targetY = enemyTribe.y + (Math.random() * 10 - 5);
             }
         } else {
             // Không có địch, tiến thẳng vào lãnh thổ địch
+            soldier.state = STATES.WANDERING;
             soldier.targetX = enemyTribe.x + (Math.random() * 8 - 4);
             soldier.targetY = enemyTribe.y + (Math.random() * 8 - 4);
         }
@@ -168,6 +192,14 @@ function _endWar(tribe1, tribe2, winnerName) {
         const otherId = tribe.id === tribe1.id ? tribe2.id : tribe1.id;
         tribe.diplomacy[otherId] = 'truce';
     });
+
+    // Tiến hóa Pixel
+    let winnerTribe = tribe1.name === winnerName ? tribe1 : tribe2;
+    winnerTribe.winCount = (winnerTribe.winCount || 0) + 1;
+    if (winnerTribe.winCount >= 3 && !winnerTribe.isHeroTribe) {
+        winnerTribe.isHeroTribe = true;
+        addWorldEvent('Evolution', 'Historic', `Sự tiến hóa của ${winnerTribe.name}`, `Trải qua bao chiến trường đẫm máu, ${winnerTribe.name} đã tiến hóa thành một Tộc Anh Hùng với sức mạnh vượt trội!`);
+    }
 
     const loserName = winnerName === tribe1.name ? tribe2.name : tribe1.name;
     const msg = `Chiến tranh kết thúc! ${winnerName} đánh bại ${loserName} và chiếm thêm lãnh thổ.`;

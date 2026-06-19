@@ -4,6 +4,7 @@ import { centerCamera } from './camera.js';
 import { TILE_SIZE } from './config.js';
 import { saveGame, loadSaveData, getSaveData } from './saveLoad.js';
 import { ENTITY_DATA } from './data/races.js';
+import { getTribeFood, getTribeWood } from './utils.js';
 
 export function setupUIEvents() {
     document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -133,6 +134,23 @@ export function setupUIEvents() {
         let s = localStorage.getItem('thePeopleSaveV12') || localStorage.getItem('thePeopleSaveV11');
         if (s) loadSaveData(s); else alert("Không có dữ liệu save.");
     });
+    
+    document.getElementById('btn-random-map')?.addEventListener('click', () => {
+        if(confirm('Bạn có chắc muốn xóa thế giới cũ và tạo một thế giới ngẫu nhiên mới?')) {
+            import('./main.js').then(m => m.generateRandomMap());
+        }
+    });
+    document.getElementById('btn-clear-map')?.addEventListener('click', () => {
+        if(confirm('Nhấn chìm tất cả lục địa xuống biển? Các bộ lạc hiện tại sẽ bị xóa sổ.')) {
+            import('./main.js').then(m => m.clearMapToWater());
+        }
+    });
+    document.getElementById('btn-guide')?.addEventListener('click', () => {
+        document.getElementById('guide-modal')?.classList.remove('hidden');
+    });
+    document.getElementById('close-guide-modal')?.addEventListener('click', () => {
+        document.getElementById('guide-modal')?.classList.add('hidden');
+    });
     document.getElementById('btn-export').addEventListener('click', () => {
         let blob = new Blob([getSaveData()], {type: "application/json"});
         let url = URL.createObjectURL(blob);
@@ -190,12 +208,16 @@ export function inspectObject(tx, ty, wx, wy) {
                 let t = state.tribes.find(tr => tr.id === tId);
                 if (t) {
                     let leader = state.npcs.find(n => n.id === t.leaderId);
+                    let soldiers = state.npcs.filter(n => n.tribeId === t.id && n.isSoldier).length;
+                    let children = state.npcs.filter(n => n.tribeId === t.id && n.age < 16).length;
+                    let workers = t.population - soldiers - children;
+
                     territoryStr = `<hr style="border-color:#485460;margin:5px 0;">
-                    <b style="color:${t.color};">Bộ lạc ${t.name}</b><br>
+                    <b style="color:${t.color};">Bộ lạc ${t.name}</b> ${t.isHeroTribe ? '🌟 [Anh Hùng]' : ''}<br>
                     Cấp độ: ${t.level}<br>
-                    Dân số: ${t.population} người<br>
+                    Dân số: ${t.population} người (Lính: ${soldiers}, Dân: ${workers}, Trẻ em: ${children})<br>
                     Lãnh đạo: ${leader ? leader.name : 'Không có'}<br>
-                    Kho: 🪵 ${Math.floor(t.woodStorage)} | 🥩 ${Math.floor(t.foodStorage)}<br>
+                    Kho: 🪵 ${Math.floor(getTribeWood(t))} | 🥩 ${Math.floor(getTribeFood(t))} | ⛏️ Quặng: ${(t.inventory.iron_ore||0) + (t.inventory.copper||0)}<br>
                     Điểm: 💡 ${t.researchPoints} | 🎭 ${t.culturePoints}`;
                     
                     if (t.kingdomId) {

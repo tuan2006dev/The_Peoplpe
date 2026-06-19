@@ -1,6 +1,8 @@
 import { state } from '../gameState.js';
 import { ENTITY_DATA, RELATION_MATRIX } from '../data/races.js';
 import { addWorldEvent } from './historySystem.js';
+import { getTribeFood, getTribeWood, consumeTribeFood, consumeTribeWood, addTribeResource } from '../utils.js';
+import { RESOURCES } from '../data/resources.js';
 
 export function initializeTribeDiplomacy(tribe) {
     if (!tribe.relations) tribe.relations = {};
@@ -80,18 +82,78 @@ export function updateDiplomacy() {
 
             // Cơ chế đàm phán hòa bình
             if (currentStatus === 'war') {
-                // Tộc có diplomacy cao có khả năng đề xuất hòa bình
-                let peaceChance = (r1.baseStats.diplomacy + r2.baseStats.diplomacy) * 0.001; 
-                if (Math.random() < peaceChance) {
-                    t1.diplomaticStatus[t2.id] = 'truce';
-                    t2.diplomaticStatus[t1.id] = 'truce';
-                    t1.truceCooldowns[t2.id] = 1800; 
-                    t2.truceCooldowns[t1.id] = 1800;
-                    t1.relations[t2.id] += 50; // Cải thiện quan hệ
-                    t2.relations[t1.id] += 50;
-                    addWorldEvent('Peace', 'Historic', `Hiệp ước đình chiến`, `Thông qua đàm phán ngoại giao khéo léo, ${t1.name} và ${t2.name} đã chấp nhận ngừng bắn.`);
+                // Tộc Orc không bao giờ ký hiệp ước hòa bình
+                if (r1.id === 'orc' || r2.id === 'orc') {
+                    // Không đàm phán hòa bình
+                } else {
+                    // Tộc có diplomacy cao có khả năng đề xuất hòa bình
+                    let peaceChance = (r1.baseStats.diplomacy + r2.baseStats.diplomacy) * 0.001; 
+                    if (Math.random() < peaceChance) {
+                        t1.diplomaticStatus[t2.id] = 'truce';
+                        t2.diplomaticStatus[t1.id] = 'truce';
+                        t1.truceCooldowns[t2.id] = 1800; 
+                        t2.truceCooldowns[t1.id] = 1800;
+                        t1.relations[t2.id] += 50; // Cải thiện quan hệ
+                        t2.relations[t1.id] += 50;
+                        addWorldEvent('Peace', 'Historic', `Hiệp ước đình chiến`, `Thông qua đàm phán ngoại giao khéo léo, ${t1.name} và ${t2.name} đã chấp nhận ngừng bắn.`);
+                    }
+                }
+            }
+
+            // Hiệp ước bảo vệ biển (Human & Merfolk)
+            if ((r1.id === 'human' && r2.id === 'merfolk') || (r1.id === 'merfolk' && r2.id === 'human')) {
+                let humanTribe = r1.id === 'human' ? t1 : t2;
+                let merfolkTribe = r1.id === 'merfolk' ? t1 : t2;
+                if (getTribeFood(humanTribe) > 100 && getTribeWood(humanTribe) > 50 && relScore > 50 && currentStatus !== 'war') {
+                    if (Math.random() < 0.05) { // 5% chance per tick when conditions are met
+                        consumeTribeFood(humanTribe, 20);
+                        consumeTribeWood(humanTribe, 10);
+                        addTribeResource(merfolkTribe, 'wheat', 20);
+                        addTribeResource(merfolkTribe, 'timber', 10);
+                        t1.relations[t2.id] += 10;
+                        t2.relations[t1.id] += 10;
+                        // Gửi lính Merfolk tuần tra (spawn lính ở gần Human)
+                        addWorldEvent('Alliance', 'Historic', `Hiệp Ước Bảo Vệ Biển`, `Đế chế ${humanTribe.name} đã cung cấp lương thực và gỗ cho ${merfolkTribe.name} để đổi lấy sự bảo hộ vùng biển.`);
+                    }
+                }
+            }
+
+            // Tặng quà ngoại giao để cải thiện quan hệ
+            if (t1.inventory && t2.inventory && currentStatus !== 'war') {
+                if (Math.random() < 0.05) {
+                    let valuableItems = ['gold', 'gems', 'wine', 'silk', 'magic_crystal'];
+                    for (let item of valuableItems) {
+                        if (t1.inventory[item] > 5) {
+                            t1.inventory[item] -= 5;
+                            addTribeResource(t2, item, 5);
+                            t1.relations[t2.id] += 15;
+                            t2.relations[t1.id] += 15;
+                            let resName = RESOURCES[item] ? RESOURCES[item].name : item;
+                            addWorldEvent('Diplomacy', 'Historic', `Tặng Quà Ngoại Giao`, `Bộ lạc ${t1.name} đã gửi tặng 5 ${resName} quý giá cho ${t2.name} để thắt chặt tình hữu nghị.`);
+                            break;
+                        }
+                    }
                 }
             }
         }
     }
+    
+    // Phần thưởng từ các tộc trung lập (Vintner, Merchant Guild)
+    state.tribes.forEach(t1 => {
+        let r1 = ENTITY_DATA.find(r => r.id === t1.raceId);
+        if (!r1) return;
+        
+        state.tribes.forEach(t2 => {
+            if (t1.id === t2.id) return;
+            let r2 = ENTITY_DATA.find(r => r.id === t2.raceId);
+            // Nếu t2 là trung lập kinh tế (Tier 4) và có quan hệ tốt
+            if (r2 && r2.tier === 4 && t1.relations[t2.id] > 80) {
+                if (r2.id === 'vintner' && Math.random() < 0.05) {
+                    addTribeResource(t1, 'wine', 5); // Rượu/Lương thực rẻ từ Vintner
+                } else if (r2.id === 'merchant_guild' && Math.random() < 0.05) {
+                    addTribeResource(t1, 'gold', 2); // Vật liệu từ Thương Hội
+                }
+            }
+        });
+    });
 }

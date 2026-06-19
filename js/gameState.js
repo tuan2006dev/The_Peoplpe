@@ -2,7 +2,7 @@ import { START_YEAR } from './config.js';
 
 export const state = {
     grid: [], envGrid: [], territoryGrid: [],
-    npcs: [], monsters: [], neutrals: [], animals: [], spirits: [], bosses: [], deadNpcs: [], effects: [], foods: [], houses: [], tribes: [], buildings: [], religions: [],
+    npcs: [], monsters: [], neutrals: [], animals: [], spirits: [], bosses: [], deadNpcs: [], effects: [], foods: [], resources: [], houses: [], tribes: [], buildings: [], religions: [],
     kingdoms: [], diplomacy: [], wars: [], activeDisasters: [],
     bossTracking: { waterTicks: 0, volcanoEruptions: 0, waterCorpses: 0, dragonsKilled: 0, initialForestCount: 0, forestsChopped: 0, darkRituals: 0, spellsCast: 0, activeBosses: [] },
     god: { divinePower: 100, reputation: 0, fearLevel: 0, mercyLevel: 0, miracleCount: 0, disasterCount: 0 },
@@ -24,7 +24,7 @@ export const state = {
 export function resetState() {
     state.grid = []; state.envGrid = []; state.territoryGrid = []; 
     state.npcs = []; state.monsters = []; state.neutrals = []; state.animals = []; state.spirits = []; state.bosses = [];
-    state.deadNpcs = []; state.effects = []; state.foods = []; state.houses = []; state.tribes = []; state.buildings = []; state.religions = []; state.kingdoms = []; state.diplomacy = []; state.wars = []; state.activeDisasters = [];
+    state.deadNpcs = []; state.effects = []; state.foods = []; state.resources = []; state.houses = []; state.tribes = []; state.buildings = []; state.religions = []; state.kingdoms = []; state.diplomacy = []; state.wars = []; state.activeDisasters = [];
     state.bossTracking = { waterTicks: 0, volcanoEruptions: 0, waterCorpses: 0, dragonsKilled: 0, initialForestCount: 0, forestsChopped: 0, darkRituals: 0, spellsCast: 0, activeBosses: [] };
     state.historyLogs = []; state.worldHistory = []; state.legendaryPersons = []; state.particles = [];
     state.god = { divinePower: 100, reputation: 0, fearLevel: 0, mercyLevel: 0, miracleCount: 0, disasterCount: 0 };

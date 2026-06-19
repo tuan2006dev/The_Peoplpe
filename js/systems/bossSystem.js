@@ -24,6 +24,7 @@ export function spawnBoss(x, y, raceId) {
     };
     state.bosses.push(b);
     state.bossTracking.activeBosses.push(raceId);
+    state.bossTracking.lastBossSpawnYear = state.time.year;
     addWorldEvent('Boss', 'Danger', `BOSS THỨC TỈNH: ${raceData.name}`, `Sức mạnh cổ đại đang trỗi dậy! Thảm họa toàn cầu sắp ập đến!`);
     
     // UI Warning
@@ -47,7 +48,26 @@ export function spawnBoss(x, y, raceId) {
 }
 
 export function checkBossAwakeningConditions() {
-    if (state.ticks % 30 !== 0) return; 
+    if (state.ticks % 600 !== 0) return; // Chỉ kiểm tra mỗi 10 ngày thay vì mỗi nửa ngày
+    
+    // Yêu cầu: Game phải đạt tối thiểu Năm 50 thì mới bắt đầu spawn Boss
+    if (state.time.year < 50) return;
+    
+    // Yêu cầu: Ít nhất 10 năm mới có 1 Boss xuất hiện
+    if (!state.bossTracking.lastBossSpawnYear) state.bossTracking.lastBossSpawnYear = 0;
+    if (state.time.year - state.bossTracking.lastBossSpawnYear < 10) return;
+    
+    // Thêm tỉ lệ ngẫu nhiên (chỉ 5% cơ hội thức tỉnh khi thỏa điều kiện)
+    if (Math.random() > 0.05) return;
+
+    function getResourcePos(resId) {
+        let resList = state.resources.filter(r => r.id === resId);
+        if (resList.length > 0) {
+            let res = resList[Math.floor(Math.random() * resList.length)];
+            return { x: res.x, y: res.y };
+        }
+        return { x: COLS/2, y: ROWS/2 };
+    }
 
     // 1. Leviathan (Map > 70% water)
     let waterCount = 0; let totalCells = COLS * ROWS;
@@ -82,19 +102,40 @@ export function checkBossAwakeningConditions() {
 
     // 5. Ent Cổ Thụ (Rừng bị chặt > 50)
     if (state.bossTracking.forestsChopped > 50 && !state.bossTracking.activeBosses.includes('fae_king')) {
-        spawnBoss(COLS/2, ROWS/2, 'fae_king');
+        let pos = getResourcePos('hardwood');
+        spawnBoss(pos.x, pos.y, 'fae_king');
     }
 
     // 6. Thực Thể Hư Không (> 1000 phép thuật được cast)
     let totalSpells = state.god.miracleCount + state.god.disasterCount;
     if (totalSpells >= 1000 && !state.bossTracking.activeBosses.includes('void_wyrm')) {
-        spawnBoss(COLS/2, ROWS/2, 'void_wyrm');
+        let pos = getResourcePos('uranium');
+        spawnBoss(pos.x, pos.y, 'void_wyrm');
     }
 
     // 7. Death Knight (Đã chết > 500)
     if (state.bossTracking.waterCorpses + state.deadNpcs.length >= 500 && !state.bossTracking.activeBosses.includes('death_knight')) {
         spawnBoss(COLS/2, ROWS/2, 'death_knight');
     }
+
+    // 8. Tộc quá mạnh: Dân số > 100 hoặc lãnh thổ > 50% đất liền
+    state.tribes.forEach(t => {
+        let pop = state.npcs.filter(n => n.tribeId === t.id && n.health > 0).length;
+        let territoryCount = t.territoryTiles ? t.territoryTiles.length : 0;
+        let totalLand = 0;
+        for(let x=0; x<COLS; x++) {
+            for(let y=0; y<ROWS; y++) {
+                if(state.grid[x] && state.grid[x][y] !== TERRAIN.NUOC) totalLand++;
+            }
+        }
+        if (pop > 100 || (totalLand > 0 && territoryCount / totalLand > 0.5)) {
+            if (!state.bossTracking.activeBosses.includes('troll_king')) {
+                spawnBoss(t.x, t.y, 'troll_king');
+            } else if (!state.bossTracking.activeBosses.includes('alpha_wolf')) {
+                spawnBoss(t.x, t.y, 'alpha_wolf');
+            }
+        }
+    });
 }
 
 export function updateBosses() {
@@ -115,7 +156,26 @@ export function updateBosses() {
         if (!target || target.health <= 0) {
             let targets = state.npcs.filter(n => n.health > 0);
             if (targets.length > 0) {
-                targets.sort((a,c) => Math.hypot(a.x-b.x, a.y-b.y) - Math.hypot(c.x-b.x, c.y-b.y));
+                if (b.raceId === 'kraken_elder' || b.raceId === 'leviathan' || b.raceId === 'dragon_turtle' || b.raceId === 'sea_serpent') {
+                    // Ưu tiên NPC ở ven bờ (gần nước)
+                    targets.sort((a,c) => {
+                        let aNearWater = 0, cNearWater = 0;
+                        for(let dx=-2;dx<=2;dx++) for(let dy=-2;dy<=2;dy++){
+                            let ax = Math.round(a.x)+dx, ay = Math.round(a.y)+dy;
+                            if(ax>=0&&ax<COLS&&ay>=0&&ay<ROWS&&state.grid[ax]&&state.grid[ax][ay]===1) aNearWater++;
+                            let cx = Math.round(c.x)+dx, cy = Math.round(c.y)+dy;
+                            if(cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&state.grid[cx]&&state.grid[cx][cy]===1) cNearWater++;
+                        }
+                        let distA = Math.hypot(a.x-b.x, a.y-b.y);
+                        let distC = Math.hypot(c.x-b.x, c.y-b.y);
+                        // Trọng số ưu tiên gần bờ (trừ điểm nếu gần nước để sort lên đầu)
+                        let scoreA = distA - (aNearWater>0 ? 50 : 0);
+                        let scoreC = distC - (cNearWater>0 ? 50 : 0);
+                        return scoreA - scoreC;
+                    });
+                } else {
+                    targets.sort((a,c) => Math.hypot(a.x-b.x, a.y-b.y) - Math.hypot(c.x-b.x, c.y-b.y));
+                }
                 b.targetId = targets[0].id;
                 target = targets[0];
             }

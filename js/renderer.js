@@ -1,5 +1,6 @@
 import { state } from './gameState.js';
 import { TILE_SIZE, COLS, ROWS, COLORS, TERRAIN } from './config.js';
+import { BIOME_COLORS } from './data/constants.js';
 import { updateUITabs } from './ui.js';
 import { centerCamera } from './camera.js';
 
@@ -13,32 +14,33 @@ let lastMinimapTick = -1;
 let minimapImageData = null;
 
 export function createTextures() {
-    let createPattern = (color1, color2, size, type) => {
+    let createPattern = (color1, size, type) => {
         let c = document.createElement('canvas'); c.width = size; c.height = size;
         let ctx = c.getContext('2d');
         ctx.fillStyle = color1; ctx.fillRect(0,0,size,size);
-        ctx.fillStyle = color2;
+        
+        // Add some noise/shading
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
         if (type === 'dots') {
             for(let i=0; i<5; i++) { ctx.fillRect(Math.random()*size, Math.random()*size, 2, 2); }
         } else if (type === 'lines') {
             ctx.fillRect(0, size/2, size, 2);
         } else if (type === 'waves') {
             ctx.beginPath(); ctx.moveTo(0, size/2); ctx.quadraticCurveTo(size/2, 0, size, size/2); ctx.stroke();
-        } else if (type === 'hex') {
-            ctx.fillRect(2, 2, size-4, size-4);
         } else if (type === 'noise') {
             for(let i=0; i<10; i++) { ctx.fillRect(Math.random()*size, Math.random()*size, 1, 1); }
         }
         return ctx.createPattern(c, 'repeat');
     };
     
-    patterns[TERRAIN.DAT] = createPattern('#2ecc71', '#27ae60', TILE_SIZE, 'dots');
-    patterns[TERRAIN.NUOC] = createPattern('#3498db', '#2980b9', TILE_SIZE, 'waves');
-    patterns[TERRAIN.RUNG] = createPattern('#27ae60', '#1e8449', TILE_SIZE, 'dots');
-    patterns[TERRAIN.NUI] = createPattern('#7f8c8d', '#95a5a6', TILE_SIZE, 'lines');
-    patterns[TERRAIN.CAT] = createPattern('#f1c40f', '#f39c12', TILE_SIZE, 'noise');
-    patterns[TERRAIN.TUYET] = createPattern('#ecf0f1', '#bdc3c7', TILE_SIZE, 'dots');
-    patterns[TERRAIN.DAM_LAY] = createPattern('#16a085', '#1abc9c', TILE_SIZE, 'dots');
+    // Create patterns per biome
+    for (let biome in BIOME_COLORS) {
+        let type = 'dots';
+        if(biome.includes('Nước')) type = 'waves';
+        if(biome.includes('Núi')) type = 'lines';
+        if(biome.includes('Sa mạc') || biome.includes('Đất hoang')) type = 'noise';
+        patterns[biome] = createPattern(BIOME_COLORS[biome], TILE_SIZE, type);
+    }
 }
 
 export function updateParticles() {
@@ -74,7 +76,8 @@ export function draw() {
         for (let y = startRow; y < endRow; y++) {
             visTiles++;
             let tile = state.grid[x][y];
-            ctx.fillStyle = patterns[tile] || COLORS[tile];
+            let biome = state.envGrid[x][y] ? state.envGrid[x][y].biome : null;
+            ctx.fillStyle = (biome && patterns[biome]) ? patterns[biome] : (patterns[tile] || COLORS[tile]);
             
             if (tile === TERRAIN.NUOC) {
                 if (state.camera.zoom > 0.5) {
@@ -223,10 +226,29 @@ export function draw() {
 
     document.getElementById('dbg-vistiles').innerText = visTiles;
 
-    ctx.fillStyle = '#e74c3c';
-    state.foods.forEach(f => {
-        if(f.x>=startCol && f.x<endCol && f.y>=startRow && f.y<endRow) {
-            ctx.beginPath(); ctx.arc(f.x*TILE_SIZE+8, f.y*TILE_SIZE+8, 3, 0, Math.PI*2); ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    state.resources.forEach(res => {
+        if (res.amount <= 0) return;
+        if(res.x >= startCol && res.x < endCol && res.y >= startRow && res.y < endRow) {
+            let px = res.x * TILE_SIZE + TILE_SIZE/2;
+            let py = res.y * TILE_SIZE + TILE_SIZE/2;
+            
+            // Vẽ bóng đen bên dưới emoji cho rõ
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath(); ctx.arc(px, py + 2, 4, 0, Math.PI*2); ctx.fill();
+            
+            ctx.font = '12px Arial';
+            ctx.fillText(res.emoji, px, py);
+            
+            // Vẽ cọc/hộp lưu trữ nếu là tài nguyên khoáng sản/gỗ
+            if (res.type === 'Khai thác' || res.type === 'Thu thập') {
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillRect(px - 6, py + 4, 12, 2);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(px - 6, py + 4, 12 * (res.amount / res.maxAmount), 2);
+            }
         }
     });
 
@@ -267,13 +289,18 @@ export function draw() {
             } else {
                 ctx.fillStyle = n.id === state.selectedNpcId ? '#f1c40f' : (n.isSoldier ? '#e74c3c' : '#dcdde1');
                 let isPossessed = state.possession && state.possession.active && state.possession.npcId === n.id;
-                if (isPossessed) {
-                    ctx.shadowColor = '#e67e22';
+                let tribe = state.tribes.find(tr => tr.id === n.tribeId);
+                let isHero = tribe && tribe.isHeroTribe;
+                
+                if (isPossessed || isHero) {
+                    ctx.shadowColor = isPossessed ? '#e67e22' : '#f1c40f';
                     ctx.shadowBlur = 15;
-                    ctx.fillStyle = '#e67e22';
+                    if (isPossessed) ctx.fillStyle = '#e67e22';
+                    else if (n.isSoldier) ctx.fillStyle = '#e74c3c';
+                    else ctx.fillStyle = '#f1c40f';
                 }
                 ctx.beginPath(); ctx.arc(px, py + walkY, 4, 0, Math.PI*2); ctx.fill();
-                if (isPossessed) ctx.shadowBlur = 0;
+                if (isPossessed || isHero) ctx.shadowBlur = 0;
             }
             
             // Draw indicators
@@ -352,13 +379,13 @@ function updateMinimap() {
                     const tribe = state.tribes.find(t => t.id === tribeId);
                     mCtx.fillStyle = tribe ? tribe.color + '99' : '#27ae60';
                 } else {
-                    mCtx.fillStyle = state.grid[x][y] === 2 ? '#1e8449' :
-                                     state.grid[x][y] === 3 ? '#5d6d7e' :
-                                     '#2ecc71';
+                    let biome = state.envGrid[x] && state.envGrid[x][y] ? state.envGrid[x][y].biome : null;
+                    mCtx.fillStyle = (biome && BIOME_COLORS[biome]) ? BIOME_COLORS[biome] : '#2ecc71';
                 }
                 mCtx.fillRect(Math.floor(x * scaleX), Math.floor(y * scaleY), Math.ceil(scaleX), Math.ceil(scaleY));
             } else {
-                mCtx.fillStyle = '#2980b9';
+                let biome = state.envGrid[x] && state.envGrid[x][y] ? state.envGrid[x][y].biome : null;
+                mCtx.fillStyle = (biome && BIOME_COLORS[biome]) ? BIOME_COLORS[biome] : '#2980b9';
                 mCtx.fillRect(Math.floor(x * scaleX), Math.floor(y * scaleY), Math.ceil(scaleX), Math.ceil(scaleY));
             }
         }
