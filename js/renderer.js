@@ -9,6 +9,8 @@ export const minimapCanvas = document.getElementById('minimap');
 export const mCtx = minimapCanvas.getContext('2d');
 
 let patterns = {};
+let lastMinimapTick = -1;
+let minimapImageData = null;
 
 export function createTextures() {
     let createPattern = (color1, color2, size, type) => {
@@ -320,25 +322,72 @@ export function draw() {
     }
 
     ctx.restore();
-    
+
     updateMinimap();
     updateUITabs();
 }
 
 function updateMinimap() {
+    // Chỉ render lại minimap mỗi 60 ticks để tiết kiệm performance
+    if (state.ticks === lastMinimapTick) return;
+    if (state.ticks % 3 !== 0) {
+        // Chỉ cập nhật viewport, không redraw toàn bộ
+        _updateMinimapViewport();
+        return;
+    }
+    lastMinimapTick = state.ticks;
+
     mCtx.fillStyle = '#1e272e';
     mCtx.fillRect(0, 0, 200, 120);
-    mCtx.fillStyle = '#27ae60';
-    for (let x=0; x<COLS; x++) {
-        for (let y=0; y<ROWS; y++) {
-            if (state.grid[x][y] !== TERRAIN.NUOC) mCtx.fillRect(x, y, 1, 1);
+
+    // Vẽ địa hình cơ bản
+    const scaleX = 200 / state.grid.length;
+    const scaleY = 120 / (state.grid[0]?.length || 1);
+
+    for (let x = 0; x < state.grid.length; x++) {
+        for (let y = 0; y < (state.grid[x]?.length || 0); y++) {
+            if (state.grid[x][y] !== 1) { // Không phải nước
+                const tribeId = state.territoryGrid?.[x]?.[y];
+                if (tribeId) {
+                    const tribe = state.tribes.find(t => t.id === tribeId);
+                    mCtx.fillStyle = tribe ? tribe.color + '99' : '#27ae60';
+                } else {
+                    mCtx.fillStyle = state.grid[x][y] === 2 ? '#1e8449' :
+                                     state.grid[x][y] === 3 ? '#5d6d7e' :
+                                     '#2ecc71';
+                }
+                mCtx.fillRect(Math.floor(x * scaleX), Math.floor(y * scaleY), Math.ceil(scaleX), Math.ceil(scaleY));
+            } else {
+                mCtx.fillStyle = '#2980b9';
+                mCtx.fillRect(Math.floor(x * scaleX), Math.floor(y * scaleY), Math.ceil(scaleX), Math.ceil(scaleY));
+            }
         }
     }
-    mCtx.fillStyle = '#e74c3c';
-    state.tribes.forEach(t => mCtx.fillRect(t.x, t.y, 2, 2));
-    
+
+    // Vẽ thủ đô bộ lạc
+    state.tribes.forEach(t => {
+        mCtx.fillStyle = t.color;
+        mCtx.fillRect(Math.floor(t.x * scaleX) - 1, Math.floor(t.y * scaleY) - 1, 3, 3);
+    });
+
+    // Vẽ thủ đô vương quốc
+    state.kingdoms.forEach(k => {
+        const cap = state.tribes.find(t => t.id === k.capitalTribeId);
+        if (cap) {
+            mCtx.fillStyle = k.color;
+            mCtx.strokeStyle = '#fff';
+            mCtx.lineWidth = 0.5;
+            mCtx.fillRect(Math.floor(cap.x * scaleX) - 2, Math.floor(cap.y * scaleY) - 2, 4, 4);
+            mCtx.strokeRect(Math.floor(cap.x * scaleX) - 2, Math.floor(cap.y * scaleY) - 2, 4, 4);
+        }
+    });
+
+    _updateMinimapViewport();
+}
+
+function _updateMinimapViewport() {
     let vp = document.getElementById('minimap-viewport');
-    let sc = 200 / COLS;
+    let sc = 200 / state.grid.length;
     vp.style.left = Math.max(0, -state.camera.x / (TILE_SIZE * state.camera.zoom) * sc) + 'px';
     vp.style.top = Math.max(0, -state.camera.y / (TILE_SIZE * state.camera.zoom) * sc) + 'px';
     vp.style.width = (canvas.width / (TILE_SIZE * state.camera.zoom) * sc) + 'px';

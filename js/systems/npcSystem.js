@@ -2,6 +2,7 @@ import { state } from '../gameState.js';
 import { determineJob, determineBelief, determineMood, determineState, executeState } from './aiSystem.js';
 import { spawnFood } from './worldSystem.js';
 import { generateLifeGoal } from './memorySystem.js';
+import { SEASON_HUNGER_MULTIPLIER } from './environmentSystem.js';
 
 export function updateNpcsTick() {
     for (let i = 0; i < state.npcs.length; i++) {
@@ -41,7 +42,8 @@ export function updateDailyLogic() {
         determineBelief(npc); 
         determineMood(npc); 
         
-        npc.hunger += 1; if(npc.hunger>100) npc.hunger=100;
+        const hungerRate = (SEASON_HUNGER_MULTIPLIER[state.climate.season] || 1.0);
+        npc.hunger += hungerRate; if(npc.hunger>100) npc.hunger=100;
         if(npc.hunger>=80) npc.health-=3; else if(npc.hunger<30 && npc.energy>50 && npc.health<100) npc.health+=2;
         if(npc.age>=65) npc.health-=0.5;
         

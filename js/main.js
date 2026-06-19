@@ -10,11 +10,19 @@ import { rebuildSpatialGrid } from './systems/worldSystem.js';
 import { updateTribeLogic } from './systems/tribeSystem.js';
 import { updateKingdomLogic } from './systems/kingdomSystem.js';
 import { updateGodLogic } from './systems/godPowerSystem.js';
+import { updateTechnologyLogic } from './systems/technologySystem.js';
+import { updateTradeLogic } from './systems/tradeSystem.js';
+import { updateWarLogic } from './systems/warSystem.js';
+import { updateReligionLogic } from './systems/religionSystem.js';
+import { updateDisasterLogic } from './systems/disasterSystem.js';
+import { updateEnvironmentLogic } from './systems/environmentSystem.js';
+import { updateFamilyLogic } from './systems/familySystem.js';
 import { updateRoutine } from './systems/routineSystem.js';
 import { updateRelationships } from './systems/relationshipSystem.js';
 import { updatePossessionTick } from './systems/possessionSystem.js';
 import { saveGame } from './saveLoad.js';
 import { centerCamera } from './camera.js';
+import { initTutorial, updateTutorialTick } from './ui/tutorial.js';
 
 function resizeCanvas() {
     let mainView = document.getElementById('main-view');
@@ -52,6 +60,7 @@ function init() {
     logEvent("Thế giới nước đã được tạo ra. Hãy tự vẽ các hòn đảo của riêng bạn!");
     setupInput();
     setupUIEvents();
+    initTutorial();
     
     setInterval(() => {
         if (state.settings.autoSave && !state.hasEnded) { saveGame(); }
@@ -77,6 +86,8 @@ function gameLoop(timestamp) {
         if (state.time.frames >= state.time.framesPerDay) {
             state.time.frames = 0; advanceDay(); 
             updateDailyLogic(); updateTribeLogic(); updateKingdomLogic(); updateGodLogic();
+            updateTechnologyLogic(); updateTradeLogic(); updateWarLogic(); updateReligionLogic();
+            updateDisasterLogic(); updateEnvironmentLogic(); updateFamilyLogic();
         }
         
         for (let j = state.effects.length - 1; j >= 0; j--) {
@@ -87,8 +98,10 @@ function gameLoop(timestamp) {
         updateRoutine();
         updateRelationships();
         updateParticles();
+        updateTutorialTick();
+
+        if (state.possession) updatePossessionTick();
         updateNpcsTick();
-        updatePossessionTick();
     }
     let t1 = performance.now();
     

@@ -292,6 +292,29 @@ export function updateUITabs() {
         let list = document.getElementById('tribe-list');
         list.innerHTML = state.tribes.map(t => `<li style="cursor:pointer" onclick="centerCamera(${t.x*TILE_SIZE},${t.y*TILE_SIZE}); inspectObject(${t.x},${t.y},${t.x},${t.y})"><span style="color:${t.color}">■</span> ${t.name} - Dân số: ${t.population}</li>`).join('');
     }
+
+    if (document.getElementById('tab-religion') && document.getElementById('tab-religion').classList.contains('active')) {
+        const list = document.getElementById('religion-list');
+        if (list) {
+            if (state.religions.length === 0) {
+                list.innerHTML = '<li style="color:#bdc3c7;font-style:italic">Chưa có tôn giáo nào hình thành...</li>';
+            } else {
+                list.innerHTML = state.religions.map(r => {
+                    const founder = state.npcs.find(n => n.id === r.founderId);
+                    const founderStatus = founder ? `${founder.name} (Tuổi ${Math.floor(founder.age)})` : `${r.founderName} (đã mất)`;
+                    return `<li style="border-left:3px solid ${r.color};padding-left:8px;margin-bottom:10px;">
+                        <b style="color:${r.color}">${r.name}</b><br>
+                        <span style="font-size:11px">✝️ Giáo lý: ${r.holyTenet}</span><br>
+                        <span style="font-size:11px">👤 Sáng lập: ${founderStatus}</span><br>
+                        <span style="font-size:11px">Tín đồ: <b>${r.followers.length}</b> người | Năm ra đời: ${r.foundedYear}</span><br>
+                        <div style="background:#34495e;border-radius:3px;height:5px;margin-top:3px">
+                            <div style="background:${r.color};border-radius:3px;height:5px;width:${Math.min(100, r.followers.length)}%"></div>
+                        </div>
+                    </li>`;
+                }).join('');
+            }
+        }
+    }
     
     if (document.getElementById('tab-kingdom').classList.contains('active')) {
         document.getElementById('civ-pop').innerText = state.npcs.length;
@@ -320,6 +343,55 @@ export function updateUITabs() {
         let legendsList = document.getElementById('story-legends-list');
         let legends = state.npcs.filter(n => n.traits && (n.traits.includes('chosenByFate') || n.traits.includes('heroic') || n.traits.includes('genius')) || (n.lifeStory && n.lifeStory.length > 0));
         legendsList.innerHTML = legends.map(n => `<li style="cursor:pointer" onclick="centerCamera(${n.x*TILE_SIZE},${n.y*TILE_SIZE}); inspectObject(${n.x},${n.y},${n.x},${n.y})"><b class="gold-text">${n.name}</b> (${n.job})<br><span style="font-size:11px; color:#bdc3c7">${n.lifeStory ? n.lifeStory.slice(-2).join('<br>') : ''}</span></li>`).join('');
+    }
+
+    // --- TAB K.HỌC (TECH) ---
+    if (document.getElementById('tab-tech') && document.getElementById('tab-tech').classList.contains('active')) {
+        const techList = document.getElementById('global-tech-list');
+        const avgEl = document.getElementById('tech-avg-pts');
+        if (!techList) return;
+
+        const AGE_ICONS = ['🪨', '🔥', '🌾', '👑', '⚔️'];
+        const AGE_NAMES = ['Nguyên thủy', 'Bộ lạc', 'Nông nghiệp', 'Vương quốc', 'Trung cổ'];
+        const AGE_THRESHOLDS = [0, 500, 2000, 5000, 10000];
+
+        // Điểm trung bình
+        if (avgEl) {
+            const avg = state.tribes.length > 0
+                ? Math.floor(state.tribes.reduce((s, t) => s + (t.researchPoints || 0), 0) / state.tribes.length)
+                : 0;
+            avgEl.innerText = avg;
+        }
+
+        // Hiển thị từng bộ lạc với thanh tiến trình Era
+        techList.innerHTML = state.tribes.map(t => {
+            const pts = Math.floor(t.researchPoints || 0);
+            const ageIdx = Math.max(0, AGE_NAMES.indexOf(t.ageLevel && t.ageLevel.replace('Thời kỳ ', '') || 'Nguyên thủy'));
+            const currentAgeIdx = ['Thời kỳ nguyên thủy','Thời kỳ bộ lạc','Thời kỳ nông nghiệp','Thời kỳ vương quốc','Thời kỳ trung cổ'].indexOf(t.ageLevel || 'Thời kỳ nguyên thủy');
+            const safeAgeIdx = Math.max(0, currentAgeIdx);
+            const nextThreshold = AGE_THRESHOLDS[safeAgeIdx + 1] || AGE_THRESHOLDS[AGE_THRESHOLDS.length - 1];
+            const prevThreshold = AGE_THRESHOLDS[safeAgeIdx] || 0;
+            const progress = nextThreshold > prevThreshold
+                ? Math.min(100, Math.floor(((pts - prevThreshold) / (nextThreshold - prevThreshold)) * 100))
+                : 100;
+
+            // Giao thương: các đồng minh
+            const allies = Object.entries(t.diplomacy || {})
+                .filter(([, rel]) => rel === 'alliance')
+                .map(([id]) => state.tribes.find(tr => tr.id === parseInt(id))?.name)
+                .filter(Boolean);
+
+            return `<li style="margin-bottom:10px; border-left:3px solid ${t.color}; padding-left:8px;">
+                <b style="color:${t.color}">${t.name}</b>
+                <span style="float:right;font-size:11px;color:#bdc3c7">${t.level} | Dân: ${t.population}</span><br>
+                <span style="font-size:12px">🔬 ${t.ageLevel || 'Thời kỳ nguyên thủy'}</span><br>
+                <div style="background:#34495e;border-radius:3px;height:6px;margin:3px 0;width:100%">
+                    <div style="background:#3498db;border-radius:3px;height:6px;width:${progress}%;transition:width 0.5s"></div>
+                </div>
+                <span style="font-size:10px;color:#bdc3c7">💡 ${pts} pts → ${nextThreshold} pts (${progress}%)</span><br>
+                <span style="font-size:10px;color:#2ecc71">${allies.length > 0 ? '🤝 Đồng minh thương mại: ' + allies.join(', ') : '🔒 Chưa có liên minh'}</span>
+            </li>`;
+        }).join('');
     }
 }
 

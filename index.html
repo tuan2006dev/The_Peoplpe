@@ -113,6 +113,23 @@
             </div>
             <div id="notification-area"></div>
             
+            <!-- Tutorial Overlay -->
+            <div id="tutorial-overlay" class="hidden">
+                <div class="tutorial-header">
+                    <span id="tut-title" class="gold-text">Hướng Dẫn Tân Thủ</span>
+                    <button id="btn-skip-tut" title="Bỏ qua hướng dẫn">✖</button>
+                </div>
+                <div class="tutorial-body">
+                    <p id="tut-desc">Chào mừng bạn đến với The People. Hãy bắt đầu tạo thế giới nhé!</p>
+                    <div id="tut-progress-container">
+                        <div style="background:#34495e; border-radius:3px; height:8px; width:100%; margin:8px 0;">
+                            <div id="tut-progress-bar" style="background:#2ecc71; border-radius:3px; height:8px; width:0%; transition:width 0.3s;"></div>
+                        </div>
+                        <span id="tut-progress-text" style="font-size:11px; color:#bdc3c7;">0/0</span>
+                    </div>
+                </div>
+            </div>
+
             <canvas id="game-canvas"></canvas>
             
             <div id="minimap-container">
@@ -406,6 +423,8 @@
                     <label class="setting-row"><input type="checkbox" id="set-autosave" checked> Tự động lưu (1 phút)</label>
                     <label class="setting-row"><input type="checkbox" id="set-sound"> Âm thanh (Console log)</label>
                     <label class="setting-row"><input type="checkbox" id="set-debug"> Hiện Debug Panel</label>
+                    
+                    <button id="btn-reset-tut" class="action-btn" style="margin-top:10px; width:100%; background:#8e44ad; border-color:#9b59b6;">Chơi lại Hướng dẫn</button>
                     
                     <div class="setting-row" style="margin-top: 10px;">
                         <span>Chất lượng Đồ họa:</span>

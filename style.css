@@ -144,3 +144,15 @@ strong { color: #ecf0f1; }
     #left-sidebar { width: 160px; min-width: 160px; }
     .tool-btn { font-size: 11px; }
 }
+
+/* Tutorial Overlay */
+#tutorial-overlay { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(26, 26, 36, 0.95); border: 2px solid #3498db; padding: 20px; border-radius: 8px; z-index: 1000; min-width: 350px; box-shadow: 0 0 30px rgba(52, 152, 219, 0.5); animation: floatPulse 2s infinite ease-in-out; pointer-events: auto; }
+@keyframes floatPulse { 0% { transform: translate(-50%, 0); box-shadow: 0 0 20px rgba(52, 152, 219, 0.5); } 50% { transform: translate(-50%, -10px); box-shadow: 0 0 40px rgba(52, 152, 219, 0.8); } 100% { transform: translate(-50%, 0); box-shadow: 0 0 20px rgba(52, 152, 219, 0.5); } }
+.tutorial-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #34495e; padding-bottom: 5px; }
+#tut-title { font-size: 16px; font-weight: bold; text-transform: uppercase; }
+#btn-skip-tut { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 16px; transition: 0.2s; }
+#btn-skip-tut:hover { text-shadow: 0 0 5px #e74c3c; transform: scale(1.2); }
+.tutorial-body { font-size: 14px; line-height: 1.5; color: #ecf0f1; }
+#tut-desc { margin-bottom: 15px; }
+.highlight-btn { animation: blinkBorder 1s infinite alternate !important; border-color: #f1c40f !important; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+@keyframes blinkBorder { from { border-color: #f1c40f; } to { border-color: #e67e22; } }
