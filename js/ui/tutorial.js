@@ -62,20 +62,37 @@ const TUTORIAL_STEPS = [
 export function initTutorial() {
     const skipBtn = document.getElementById('btn-skip-tut');
     const resetBtn = document.getElementById('btn-reset-tut');
+    const tutCheckbox = document.getElementById('set-tutorial');
     
     if (skipBtn) {
         skipBtn.addEventListener('click', () => {
-            endTutorial();
+            endTutorial(false);
+            if (tutCheckbox) tutCheckbox.checked = false;
         });
     }
 
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
             localStorage.removeItem('thePeople_tutorialCompleted');
+            if (tutCheckbox) tutCheckbox.checked = true;
             startTutorial();
             // Đóng tab settings
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        });
+    }
+
+    if (tutCheckbox) {
+        const isCompleted = localStorage.getItem('thePeople_tutorialCompleted');
+        tutCheckbox.checked = !isCompleted;
+        
+        tutCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                localStorage.removeItem('thePeople_tutorialCompleted');
+                startTutorial();
+            } else {
+                endTutorial(false);
+            }
         });
     }
 
@@ -95,17 +112,22 @@ function startTutorial() {
     renderCurrentStep();
 }
 
-export function endTutorial() {
+export function endTutorial(showNotification = true) {
     isTutorialActive = false;
     const overlay = document.getElementById('tutorial-overlay');
     if (overlay) overlay.classList.add('hidden');
     clearAllHighlights();
     localStorage.setItem('thePeople_tutorialCompleted', 'true');
     
-    // Thông báo chúc mừng
-    import('./ui/notification.js').then(module => {
-        module.showNotification("Bạn đã hoàn thành Hướng dẫn! Chúc bạn chơi vui vẻ.", "success");
-    }).catch(e => console.log("Tutorial end notification failed", e));
+    const tutCheckbox = document.getElementById('set-tutorial');
+    if (tutCheckbox) tutCheckbox.checked = false;
+
+    if (showNotification) {
+        // Thông báo chúc mừng
+        import('./ui/notification.js').then(module => {
+            module.showNotification("Bạn đã hoàn thành Hướng dẫn! Chúc bạn chơi vui vẻ.", "success");
+        }).catch(e => console.log("Tutorial end notification failed", e));
+    }
 }
 
 function clearAllHighlights() {
@@ -115,7 +137,7 @@ function clearAllHighlights() {
 function renderCurrentStep() {
     if (!isTutorialActive) return;
     if (tutorialStep >= TUTORIAL_STEPS.length) {
-        endTutorial();
+        endTutorial(true);
         return;
     }
 
