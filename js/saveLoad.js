@@ -1,10 +1,16 @@
-import { state } from './gameState.js';
+import { state, resetState } from './gameState.js';
 import { SAVE_KEY, SAVE_VERSION } from './config.js';
 import { playSound } from './utils.js';
 import { logEvent } from './systems/historySystem.js';
+import { rebuildSpatialGrid } from './systems/worldSystem.js';
 
 export function getSaveData() {
-    return JSON.stringify({ ...state, saveVersion: SAVE_VERSION });
+    // Clear spatialGrid to avoid duplication of NPC objects in save file
+    let tempGrid = state.spatialGrid;
+    state.spatialGrid = {};
+    let json = JSON.stringify({ ...state, saveVersion: SAVE_VERSION });
+    state.spatialGrid = tempGrid;
+    return json;
 }
 
 export function loadSaveData(json) {
@@ -42,6 +48,20 @@ export function loadSaveData(json) {
             data.saveVersion = 12;
         }
 
+        // Initialize new Tech system fields for older saves
+        if (data.kingdoms) {
+            data.kingdoms.forEach(k => {
+                if (!k.technologies) k.technologies = [];
+                if (k.currentResearch === undefined) k.currentResearch = null;
+                if (typeof k.researchPoints !== 'number') k.researchPoints = 0;
+                if (typeof k.scienceOutput !== 'number') k.scienceOutput = 0;
+                if (typeof k.researchSpeed !== 'number') k.researchSpeed = 1.0;
+                if (typeof k.breakthroughs !== 'number') k.breakthroughs = 0;
+                if (!k.currentEra) k.currentEra = "Stone Age";
+            });
+        }
+
+        resetState();
         Object.assign(state, data);
         
         // Apply defaults for missing fields
@@ -49,6 +69,20 @@ export function loadSaveData(json) {
         if (!state.eventChains) state.eventChains = [];
         if (!state.newspaperArticles) state.newspaperArticles = [];
         if (state.worldDramaScore === undefined) state.worldDramaScore = 0;
+        
+        rebuildSpatialGrid();
+
+        if (state.tribes) {
+            state.tribes.forEach(t => {
+                if (!t.diplomacy) t.diplomacy = {};
+                if (!t.diplomaticStatus) t.diplomaticStatus = {};
+                Object.keys(t.diplomaticStatus).forEach(id => { t.diplomacy[id] = t.diplomaticStatus[id]; });
+                Object.keys(t.diplomacy).forEach(id => {
+                    if (!t.diplomaticStatus[id]) t.diplomaticStatus[id] = t.diplomacy[id];
+                });
+            });
+        }
+
         logEvent("Tải game thành công.");
     } catch(e) { alert("Lỗi khi tải file save!"); console.error(e); }
 }

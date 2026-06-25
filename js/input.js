@@ -1,5 +1,5 @@
 import { state } from './gameState.js';
-import { canvas } from './renderer.js';
+import { canvas, invalidateTerrain } from './renderer.js';
 import { getWorldPos, centerCamera } from './camera.js';
 import { COLS, ROWS, TERRAIN, WORLD_WIDTH, WORLD_HEIGHT } from './config.js';
 import { playSound } from './utils.js';
@@ -157,6 +157,7 @@ function handleCanvasClick(e, isDrag = false) {
             else if (biomeName === 'Đầm lầy') state.envGrid[tx][ty].fertility = 30;
             else if (biomeName === 'Nước') state.envGrid[tx][ty].fertility = 10;
             else state.envGrid[tx][ty].fertility = 0;
+            invalidateTerrain();
         }
     };
 

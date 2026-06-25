@@ -1,0 +1,30 @@
+=== BẮT ĐẦU TEST CƠ CHẾ THỜI KÌ (ERAS) ===
+Vương quốc khởi tạo với Thời đại: Stone Age
+
+--- Đang ở thời kỳ: Stone Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Bronze Age
+
+--- Đang ở thời kỳ: Bronze Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Iron Age
+
+--- Đang ở thời kỳ: Iron Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Medieval Age
+
+--- Đang ở thời kỳ: Medieval Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Renaissance
+
+--- Đang ở thời kỳ: Renaissance ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Industrial Age
+
+--- Đang ở thời kỳ: Industrial Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Modern Age
+
+--- Đang ở thời kỳ: Modern Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Digital Age
+
+--- Đang ở thời kỳ: Digital Age ---
+[PASS] Sau 9 ticks, vương quốc đã tiến vào: Space Age
+
+[SUCCESS] Đã đạt thời kỳ tối cao (Space Age)!
+
+=== TEST HOÀN TẤT ===

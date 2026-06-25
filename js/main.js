@@ -1,6 +1,6 @@
 import { state } from './gameState.js';
 import { COLS, ROWS, TERRAIN, TILE_SIZE } from './config.js';
-import { createTextures, draw, updateParticles, canvas } from './renderer.js';
+import { createTextures, draw, updateParticles, canvas, invalidateTerrain } from './renderer.js';
 import { setupInput } from './input.js';
 import { setupUIEvents } from './ui.js';
 import { logEvent } from './systems/historySystem.js';
@@ -9,6 +9,7 @@ import { updateDailyLogic, updateNpcsTick } from './systems/npcSystem.js';
 import { rebuildSpatialGrid } from './systems/worldSystem.js';
 import { updateTribeLogic } from './systems/tribeSystem.js';
 import { updateKingdomLogic } from './systems/kingdomSystem.js';
+import { updateCivilizationLogic } from './systems/civilizationSystem.js';
 import { updateDiplomacy } from './systems/diplomacySystem.js';
 import { updateMonsters } from './systems/monsterSystem.js';
 import { updateNeutrals } from './systems/neutralSystem.js';
@@ -16,7 +17,7 @@ import { updateEcosystem, initResources } from './systems/ecosystemSystem.js';
 import { updateSpirits } from './systems/spiritSystem.js';
 import { updateBosses } from './systems/bossSystem.js';
 import { updateGodLogic } from './systems/godPowerSystem.js';
-import { updateTechnologyLogic } from './systems/technologySystem.js';
+import { updateResearchLogic } from './systems/researchSystem.js';
 import { updateTradeLogic } from './systems/tradeSystem.js';
 import { updateWarLogic } from './systems/warSystem.js';
 import { updateReligionLogic } from './systems/religionSystem.js';
@@ -30,8 +31,10 @@ import { saveGame } from './saveLoad.js';
 import { centerCamera } from './camera.js';
 import { initTutorial, updateTutorialTick } from './ui/tutorial.js';
 import { runAutomatedTest } from './tests/automatedTest.js';
+import { runHeadlessTests } from './auto_test.js';
 
 window.runAutomatedTest = runAutomatedTest;
+window.runHeadlessTests = runHeadlessTests;
 
 function resizeCanvas() {
     let mainView = document.getElementById('main-view');
@@ -50,7 +53,10 @@ function resizeCanvas() {
 
     // Generate map with 15 biomes
 function _generateMapContent() {
+    let ox = Math.random() * 100;
+    let oy = Math.random() * 100;
     function noise(nx, ny) {
+        nx += ox; ny += oy;
         return (Math.sin(nx * 10) + Math.cos(ny * 10) + Math.sin((nx + ny) * 5) + 3) / 6;
     }
     
@@ -108,6 +114,7 @@ export function generateRandomMap() {
     // Xóa bớt tài nguyên cũ và sinh lại
     state.resources = [];
     initResources();
+    invalidateTerrain();
     logEvent("Một thế giới mới vừa được hình thành ngẫu nhiên!");
 }
 
@@ -122,6 +129,7 @@ export function clearMapToWater() {
         }
     }
     state.resources = [];
+    invalidateTerrain();
     logEvent("Thế giới đã bị nhấn chìm vào Biển Cả! Hãy tự vẽ lục địa của riêng bạn.");
 }
 
@@ -137,6 +145,7 @@ function init() {
     centerCamera(centerX * TILE_SIZE, centerY * TILE_SIZE);
     
     initResources(); // Sinh tài nguyên rải rác trên bản đồ
+    invalidateTerrain();
     
     logEvent("Thế giới nước đã được tạo ra. Hãy tự vẽ các hòn đảo của riêng bạn!");
     setupInput();
@@ -158,9 +167,18 @@ export function doOneTick() {
     
     if (state.time.frames >= state.time.framesPerDay) {
         state.time.frames = 0; advanceDay(); 
-        updateDailyLogic(); updateTribeLogic(); updateKingdomLogic(); updateGodLogic();
-        updateTechnologyLogic(); updateTradeLogic(); updateWarLogic(); updateReligionLogic();
-        updateDisasterLogic(); updateEnvironmentLogic(); updateFamilyLogic();
+        updateDailyLogic();
+        updateGodLogic();
+        updateTribeLogic();
+        updateKingdomLogic();
+        updateCivilizationLogic();
+        updateResearchLogic();
+        updateTradeLogic(); 
+        updateWarLogic(); 
+        updateReligionLogic();
+        updateDisasterLogic(); 
+        updateEnvironmentLogic(); 
+        updateFamilyLogic();
     }
     
     updateDiplomacy();
@@ -191,11 +209,21 @@ function gameLoop(timestamp) {
     let dt = timestamp - lastTime; lastTime = timestamp;
     if (dt > 100) dt = 16;
     
-    let loops = state.time.speedMultiplier === 1000 ? 50 : state.time.speedMultiplier; 
+    let requestedLoops = state.time.speedMultiplier;
+    
+    // Tự động nâng ngưỡng thời gian xử lý khi chạy tốc độ cao để đảm bảo tác dụng.
+    // Chấp nhận giảm FPS (giật hình) để ưu tiên chạy logic game thật nhanh.
+    let maxTimeMs = 15;
+    if (requestedLoops >= 10) maxTimeMs = 30; // ~30 FPS
+    if (requestedLoops >= 100) maxTimeMs = 100; // ~10 FPS
+    if (requestedLoops >= 1000) maxTimeMs = 250; // ~4 FPS
     
     let t0 = performance.now();
-    for(let i=0; i<loops; i++) {
+    for(let i=0; i<requestedLoops; i++) {
         doOneTick();
+        if (performance.now() - t0 > maxTimeMs) {
+            break; 
+        }
     }
     let t1 = performance.now();
     

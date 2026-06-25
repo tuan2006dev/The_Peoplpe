@@ -48,11 +48,23 @@ export function updateNeutrals() {
                 if (dist > 5) {
                     moveTowards(n, targetTribe.x, targetTribe.y);
                 } else {
-                    // Cung cấp hiệu ứng đặc biệt khi đến làng
                     n.actionWait = 150;
                     if (n.raceId === 'merchant_guild') {
-                        targetTribe.foodStorage += 15;
-                        targetTribe.woodStorage += 15;
+                        if ((targetTribe.foodStorage || 0) >= 5 && (targetTribe.woodStorage || 0) >= 5) {
+                            targetTribe.foodStorage -= 5;
+                            targetTribe.woodStorage -= 5;
+                            if (!n.tradeStock) n.tradeStock = { food: 20, wood: 20 };
+                            n.tradeStock.food = Math.min(30, (n.tradeStock.food || 0) + 5);
+                            n.tradeStock.wood = Math.min(30, (n.tradeStock.wood || 0) + 5);
+                            if (n.tradeStock.food >= 10) {
+                                targetTribe.foodStorage += 10;
+                                n.tradeStock.food -= 10;
+                            }
+                            if (n.tradeStock.wood >= 10) {
+                                targetTribe.woodStorage += 10;
+                                n.tradeStock.wood -= 10;
+                            }
+                        }
                     } else if (n.raceId === 'scribe') {
                         targetTribe.researchPoints += 10;
                     } else if (n.raceId === 'vintner') {

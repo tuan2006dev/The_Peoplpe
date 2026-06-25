@@ -1,10 +1,11 @@
 import { state } from '../gameState.js';
 import { STATES, RELATION, BIOME_EFFECTS } from '../data/constants.js';
 import { TERRAIN, COLS, ROWS } from '../config.js';
-import { moveRandom, moveTowards, getTribeFood, getTribeWood, consumeTribeFood, consumeTribeWood, addTribeResource } from '../utils.js';
+import { moveRandom, moveTowards, getTribeFood, getTribeWood, consumeTribeFood, consumeTribeWood, addTribeResource, getTribeHousingCap } from '../utils.js';
 import { updatePlanning } from './planningSystem.js';
 import { ENTITY_DATA } from '../data/races.js';
 import { RESOURCES, RESOURCE_GROUPS } from '../data/resources.js';
+import { invalidateTerrain } from '../renderer.js';
 
 export function determineBelief(npc) {
     npc.faith -= 0.1;
@@ -28,9 +29,31 @@ export function determineJob(npc) {
     if (!t) { npc.job = "Vô nghiệp"; return; }
     
     if (Math.random() < 0.05 || npc.job === "Vô nghiệp") {
-        if (getTribeFood(t) < 50) npc.job = "Nông dân";
-        else if (getTribeWood(t) < 50) npc.job = "Thợ mộc";
-        else npc.job = "Thợ xây";
+        let k = t.kingdomId ? state.kingdoms.find(kd=>kd.id===t.kingdomId) : null;
+        let eraLevel = k ? (k.civilizationLevel || 1) : 1;
+        let pop = Math.max(t.population, 1);
+        let foodRatio = getTribeFood(t) / (pop * 2);
+        let woodRatio = getTribeWood(t) / (pop * 1.5);
+        
+        if (foodRatio < woodRatio && foodRatio < 0.7) {
+            if (Math.random() < 0.35 || npc.job === "Vô nghiệp") npc.job = "Nông dân";
+        } else if (woodRatio < 0.7) {
+            if (Math.random() < 0.35 || npc.job === "Vô nghiệp") npc.job = "Thợ mộc";
+        } else if (foodRatio >= 0.7 && woodRatio >= 0.7) {
+            if ((npc.job === "Nông dân" || npc.job === "Thợ mộc") && Math.random() < 0.85) return;
+
+            let possibleJobs = ["Thợ xây"];
+            if (eraLevel >= 2) possibleJobs.push("Thương nhân");
+            if (eraLevel >= 3) possibleJobs.push("Thợ rèn");
+            if (eraLevel >= 4) possibleJobs.push("Tu sĩ");
+            if (eraLevel >= 5) possibleJobs.push("Học giả", "Nhà khoa học");
+            if (eraLevel >= 6) possibleJobs.push("Kỹ sư", "Công nhân");
+            if (eraLevel >= 7) possibleJobs.push("Bác sĩ", "Giáo viên");
+            if (eraLevel >= 8) possibleJobs.push("Lập trình viên", "Nghiên cứu viên");
+            if (eraLevel >= 9) possibleJobs.push("Phi hành gia", "Kỹ sư vũ trụ");
+            
+            npc.job = possibleJobs[Math.floor(Math.random() * possibleJobs.length)];
+        }
     }
 }
 
@@ -45,8 +68,12 @@ export function determineState(npc) {
     // Check for enemies
     if (npc.tribeId) {
         let t = state.tribes.find(tr => tr.id === npc.tribeId);
-        if (t && t.diplomaticStatus) {
-            let enemyNear = state.npcs.find(n => n.id !== npc.id && n.tribeId && t.diplomaticStatus[n.tribeId] === 'war' && Math.hypot(n.x - npc.x, n.y - npc.y) <= 8 && n.health > 0);
+        if (t) {
+            let isAtWar = (otherTribeId) => {
+                return (t.diplomaticStatus && t.diplomaticStatus[otherTribeId] === 'war')
+                    || (t.diplomacy && t.diplomacy[otherTribeId] === 'war');
+            };
+            let enemyNear = state.npcs.find(n => n.id !== npc.id && n.tribeId && isAtWar(n.tribeId) && Math.hypot(n.x - npc.x, n.y - npc.y) <= 8 && n.health > 0);
             
             // Aggression affect behavior
             let raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
@@ -90,7 +117,7 @@ export function executeState(npc) {
             if (npc.tribeId) {
                 let t = state.tribes.find(tr=>tr.id===npc.tribeId);
                 if (t && getTribeFood(t) > 0) {
-                    if (Math.hypot(npc.x-t.x, npc.y-t.y) <= 2) { consumeTribeFood(t, 1); npc.hunger-=50; npc.state=STATES.WANDERING; }
+                    if (Math.hypot(npc.x-t.x, npc.y-t.y) <= 2) { consumeTribeFood(t, 1); npc.hunger=0; npc.actionWait = 10; npc.state=STATES.WANDERING; }
                     else moveTowards(npc, t.x, t.y);
                     break;
                 }
@@ -100,7 +127,7 @@ export function executeState(npc) {
                 if (Math.hypot(food.x - npc.x, food.y - npc.y) <= 0.5) {
                     food.amount -= 1;
                     if (food.amount <= 0 && food.renewable !== 'Có') { let idx = state.resources.indexOf(food); if(idx>-1) state.resources.splice(idx,1); }
-                    npc.hunger -= 40; npc.state = STATES.EATING; npc.actionWait = 60;
+                    npc.hunger = 0; npc.state = STATES.EATING; npc.actionWait = 10;
                 } else moveTowards(npc, food.x, food.y);
             } else {
                 // Orc săn bắt khi đói
@@ -165,8 +192,10 @@ export function executeState(npc) {
                     }
                 }
                 state.grid[cx][cy] = TERRAIN.DAT; state.envGrid[cx][cy].biome = "Đồng cỏ"; 
+                invalidateTerrain();
             }
             npc.state = npc.tribeId ? STATES.GATHERING_FOR_TRIBE : STATES.WANDERING;
+            if (npc.tribeId && npc.job === "Thợ mộc") npc.state = STATES.GATHERING_FOR_TRIBE;
             break;
         case STATES.BUILDING_HOME:
             let bt = state.tribes.find(tr=>tr.id===npc.tribeId);
@@ -177,29 +206,34 @@ export function executeState(npc) {
                         else moveTowards(npc, bt.x, bt.y);
                     } else { npc.state = STATES.WANDERING; } // Kho hết gỗ
                 } else {
-                    let bx = Math.round(npc.x); let by = Math.round(npc.y);
-                    // Tìm ô đất trống trong lãnh thổ để xây
-                    if (bx>=0 && bx<COLS && by>=0 && by<ROWS && state.grid[bx][by] === TERRAIN.DAT && !state.houses.find(h=>h.x===bx&&h.y===by) && state.territoryGrid[bx][by] === bt.id) {
-                        let raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
-                        let tier = raceData ? raceData.tier : 2;
-                        let houseType = 'Lều cỏ';
-                        
-                        if (tier === 1) { // EMPIRE
-                            houseType = 'Nhà đá';
-                            if (npc.job === 'Trưởng làng' || npc.job === 'Lãnh chúa' || npc.job === 'Thợ xây') houseType = 'Thành đá';
-                        } else if (tier === 3) { // MONSTER
-                            houseType = 'Hang động';
-                        } else { // TRIBE and others
-                            houseType = 'Lều cỏ';
-                            if (npc.job === 'Thợ xây' || npc.job === 'Chiến binh') houseType = 'Trại';
-                        }
-
-                        state.houses.push({ id: ++state.houseIdCounter, x: bx, y: by, ownerId: null, tribeId: npc.tribeId, durability: 100, type: houseType });
-                        npc.wood -= 10; npc.state = STATES.WANDERING; npc.actionWait = 180;
+                    let distToTribe = Math.hypot(npc.x - bt.x, npc.y - bt.y);
+                    if (distToTribe > 5) {
+                        moveTowards(npc, bt.x, bt.y);
                     } else {
-                        moveRandom(npc);
-                        npc.energy -= 0.5;
-                        if (npc.energy <= 0) npc.state = STATES.WANDERING;
+                        let bx = Math.round(npc.x); let by = Math.round(npc.y);
+                        // Tìm ô đất trống trong lãnh thổ để xây
+                        if (bx>=0 && bx<COLS && by>=0 && by<ROWS && state.grid[bx][by] === TERRAIN.DAT && !state.houses.find(h=>h.x===bx&&h.y===by) && state.territoryGrid[bx][by] === bt.id) {
+                            let raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
+                            let tier = raceData ? raceData.tier : 2;
+                            let houseType = 'Lều cỏ';
+                            
+                            if (tier === 1) { // EMPIRE
+                                houseType = 'Nhà đá';
+                                if (npc.job === 'Trưởng làng' || npc.job === 'Lãnh chúa' || npc.job === 'Thợ xây') houseType = 'Thành đá';
+                            } else if (tier === 3) { // MONSTER
+                                houseType = 'Hang động';
+                            } else { // TRIBE and others
+                                houseType = 'Lều cỏ';
+                                if (npc.job === 'Thợ xây' || npc.job === 'Chiến binh') houseType = 'Trại';
+                            }
+
+                            state.houses.push({ id: ++state.houseIdCounter, x: bx, y: by, ownerId: null, tribeId: npc.tribeId, durability: 100, type: houseType });
+                            npc.wood -= 10; npc.state = STATES.WANDERING; npc.actionWait = 180;
+                        } else {
+                            moveRandom(npc);
+                            npc.energy -= 0.5;
+                            if (npc.energy <= 0) npc.state = STATES.WANDERING;
+                        }
                     }
                 }
             } else {
@@ -271,7 +305,7 @@ export function executeState(npc) {
             npc.state = STATES.WANDERING;
             break;
         case STATES.SEEKING_PARTNER:
-            let partner = state.npcs.find(n => n.id !== npc.id && Math.hypot(n.x - npc.x, n.y - npc.y) <= 5 && n.relationshipStatus === RELATION.SINGLE);
+            let partner = state.npcs.find(n => n.id !== npc.id && Math.hypot(n.x - npc.x, n.y - npc.y) <= 20 && n.relationshipStatus === RELATION.SINGLE && (!n.gender || !npc.gender || n.gender !== npc.gender));
             if (partner) {
                 npc.partnerId = partner.id; partner.partnerId = npc.id;
                 npc.relationshipStatus = RELATION.PARTNERED; partner.relationshipStatus = RELATION.PARTNERED;
@@ -281,23 +315,41 @@ export function executeState(npc) {
         case STATES.CARING_FAMILY:
             if (npc.partnerId && npc.reproductionCooldown <= 0) {
                 let p = state.npcs.find(x => x.id === npc.partnerId);
+                let tribe = npc.tribeId ? state.tribes.find(tr => tr.id === npc.tribeId) : null;
+                let atCap = tribe && tribe.population >= getTribeHousingCap(tribe.id);
+                let starving = tribe && getTribeFood(tribe) < tribe.population;
+                if (atCap || starving || npc.hunger > 60 || (p && p.hunger > 60)) {
+                    moveRandom(npc);
+                    break;
+                }
                 if (p && Math.hypot(p.x - npc.x, p.y - npc.y) <= 3) {
-                    // Đặt cooldown ngay lập tức để tránh lỗi gọi import() liên tục trong lúc chờ Promise resolve
-                    npc.reproductionCooldown = 1200; 
-                    if (p) p.reproductionCooldown = 1200;
+                    // Tán tỉnh (Courtship)
+                    npc.loveMeter = (npc.loveMeter || 0) + 1;
+                    p.loveMeter = (p.loveMeter || 0) + 1;
+                    
+                    if (state.ticks % 10 === 0 && state.particles) {
+                        state.particles.push({x: npc.x*16 + 8, y: npc.y*16 - 10, vx: (Math.random()-0.5)*0.5, vy: -0.5, life: 30, type: 'heart', color: '#e84393'});
+                    }
 
-                    // Spawn child
-                    import('../entities/npc.js').then(module => {
-                        let child = module.createNpc(npc.x, npc.y, npc.id, p.id);
-                        child.tribeId = npc.tribeId; child.kingdomId = npc.kingdomId;
-                        npc.childrenIds.push(child.id); p.childrenIds.push(child.id);
-                        npc.relationshipStatus = RELATION.FAMILY; p.relationshipStatus = RELATION.FAMILY;
-                        
-                        import('./memorySystem.js').then(m => {
-                            m.addMemory(npc, 'ChildBorn', 'Sinh con', `Đã sinh ra bé ${child.name}`, 30, child.id);
-                            m.addMemory(p, 'ChildBorn', 'Sinh con', `Đã sinh ra bé ${child.name}`, 30, child.id);
+                    if (npc.loveMeter >= 60) {
+                        npc.loveMeter = 0; p.loveMeter = 0;
+                        // Đặt cooldown ngay lập tức để tránh lỗi gọi import() liên tục trong lúc chờ Promise resolve
+                        npc.reproductionCooldown = 1200; 
+                        if (p) p.reproductionCooldown = 1200;
+
+                        // Spawn child
+                        import('../entities/npc.js').then(module => {
+                            let child = module.createNpc(npc.x, npc.y, npc.id, p.id);
+                            child.tribeId = npc.tribeId; child.kingdomId = npc.kingdomId;
+                            npc.childrenIds.push(child.id); p.childrenIds.push(child.id);
+                            npc.relationshipStatus = RELATION.FAMILY; p.relationshipStatus = RELATION.FAMILY;
+                            
+                            import('./memorySystem.js').then(m => {
+                                m.addMemory(npc, 'ChildBorn', 'Sinh con', `Đã sinh ra bé ${child.name}`, 30, child.id);
+                                m.addMemory(p, 'ChildBorn', 'Sinh con', `Đã sinh ra bé ${child.name}`, 30, child.id);
+                            });
                         });
-                    });
+                    }
                 } else if (p) {
                     moveTowards(npc, p.x, p.y);
                 } else moveRandom(npc);
@@ -307,6 +359,7 @@ export function executeState(npc) {
             moveRandom(npc); // simplified
             break;
         case STATES.ATTACKING:
+            if (npc.health <= 0) { npc.state = STATES.WANDERING; break; }
             if (npc.targetEnemyId || npc.targetBossId) {
                 let enemy = npc.targetEnemyId ? state.npcs.find(n => n.id === npc.targetEnemyId) : state.bosses.find(b => b.id === npc.targetBossId);
                 if (enemy && enemy.health > 0) {
@@ -352,6 +405,16 @@ export function executeState(npc) {
                         }
 
                         enemy.health -= damage;
+
+                        if (enemy.health <= 0 && npc.traits && npc.traits.includes('heroic')) {
+                            let isBoss = state.bosses.find(b=>b.id===enemy.id) || ['dragon', 'leviathan', 'titan', 'kraken_elder', 'void_wyrm', 'death_knight', 'troll_king', 'dire_bear', 'alpha_wolf', 'fae_king'].includes(enemy.raceId);
+                            if (isBoss) {
+                                let logStr = `[Năm ${state.time.year}] Anh hùng ${npc.name} đã tung đòn kết liễu ác quỷ ${enemy.name}, giải cứu thế giới khỏi tai ương!`;
+                                if (!npc.lifeStory) npc.lifeStory = [];
+                                npc.lifeStory.push(logStr);
+                                import('../systems/historySystem.js').then(m => m.addWorldEvent('Legendary', 'Legendary', 'Chiến công huyền thoại', logStr));
+                            }
+                        }
 
                         // Merfolk cắn vây boss
                         if (npc.raceId === 'merfolk' && npc.targetBossId) {

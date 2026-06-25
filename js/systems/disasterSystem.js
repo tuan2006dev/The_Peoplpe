@@ -32,6 +32,7 @@ function _processVolcano(disaster) {
         const h = state.houses[i];
         if (Math.hypot(h.x - disaster.x, h.y - disaster.y) <= radius) {
             if (Math.random() < 0.2) {
+                state.npcs.forEach(n => { if (n.homeId === h.id) n.homeId = null; });
                 state.houses.splice(i, 1);
                 logEvent(`Núi lửa phá hủy một căn nhà tại (${h.x}, ${h.y})!`);
             }
@@ -70,7 +71,6 @@ function _processVolcano(disaster) {
 }
 
 function _processPlague(disaster) {
-    // Dịch bệnh lan từ tâm ra xung quanh ngay khi được kích hoạt
     if (disaster.life === disaster.maxLife || (disaster.maxLife === undefined && disaster.life === 399)) {
         disaster.maxLife = disaster.life;
     }
@@ -78,6 +78,7 @@ function _processPlague(disaster) {
 
     state.npcs.forEach(npc => {
         if (Math.hypot(npc.x - disaster.x, npc.y - disaster.y) <= disaster.radius / 16) {
+            if (npc.plagueImmunity) return;
             if (Math.random() < 0.4) {
                 npc.sick = true;
             }
@@ -107,9 +108,13 @@ function _processMeteor(disaster) {
     });
 
     // Phá nhà
-    state.houses = state.houses.filter(h =>
-        Math.hypot(h.x - disaster.x, h.y - disaster.y) > impactRadius
-    );
+    state.houses = state.houses.filter(h => {
+        if (Math.hypot(h.x - disaster.x, h.y - disaster.y) <= impactRadius) {
+            state.npcs.forEach(n => { if (n.homeId === h.id) n.homeId = null; });
+            return false;
+        }
+        return true;
+    });
 
     // Tạo hố: biến đất trong bán kính thành đất chết
     for (let dx = -impactRadius; dx <= impactRadius; dx++) {
@@ -140,11 +145,13 @@ function _processSickNpcs() {
         // Lây cho người gần
         if (Math.random() < 0.05) {
             const nearby = state.npcs.find(n =>
-                n.id !== npc.id && !n.sick && Math.hypot(n.x - npc.x, n.y - npc.y) <= 2
+                n.id !== npc.id && !n.sick && !n.plagueImmunity && Math.hypot(n.x - npc.x, n.y - npc.y) <= 2
             );
             if (nearby) nearby.sick = true;
         }
-        // Tự khỏi 10% mỗi check
-        if (Math.random() < 0.1) npc.sick = false;
+        if (Math.random() < 0.1) {
+            npc.sick = false;
+            npc.plagueImmunity = true;
+        }
     });
 }

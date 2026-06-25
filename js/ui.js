@@ -5,8 +5,10 @@ import { TILE_SIZE } from './config.js';
 import { saveGame, loadSaveData, getSaveData } from './saveLoad.js';
 import { ENTITY_DATA } from './data/races.js';
 import { getTribeFood, getTribeWood } from './utils.js';
-
+import { TECHNOLOGY_TREE, ERAS, getTechById } from './data/technologyTree.js';
 export function setupUIEvents() {
+    document.getElementById('game-canvas').style.cursor = 'zoom-in';
+
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             if(e.target.dataset.tool !== 'voice') {
@@ -18,6 +20,7 @@ export function setupUIEvents() {
                     e.target.classList.add('active');
                     state.currentTool = e.target.dataset.tool;
                 }
+                document.getElementById('game-canvas').style.cursor = state.currentTool ? 'crosshair' : 'zoom-in';
             } else {
                 if (state.selectedNpcId) {
                     let n = state.npcs.find(x=>x.id===state.selectedNpcId);
@@ -52,7 +55,27 @@ export function setupUIEvents() {
             if (targetId === 'tab-inspect') {
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
                 state.currentTool = null;
+                document.getElementById('game-canvas').style.cursor = 'zoom-in';
             }
+        });
+    });
+
+    // Guide Modal Tabs
+    document.querySelectorAll('.guide-tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('.guide-tab-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.borderBottom = 'none';
+                b.style.color = '#ecf0f1';
+            });
+            document.querySelectorAll('.guide-tab-pane').forEach(p => p.classList.add('hidden'));
+            
+            e.currentTarget.classList.add('active');
+            e.currentTarget.style.borderBottom = '2px solid #3498db';
+            e.currentTarget.style.color = '#3498db';
+            
+            let targetId = e.currentTarget.dataset.target;
+            document.getElementById(targetId).classList.remove('hidden');
         });
     });
 
@@ -76,6 +99,24 @@ export function setupUIEvents() {
             if (sidebar) sidebar.classList.toggle('collapsed');
         });
     }
+    
+    let btnCinematic = document.getElementById('btn-cinematic');
+    if (btnCinematic) {
+        btnCinematic.addEventListener('click', () => {
+            document.body.classList.toggle('cinematic');
+            import('./systems/historySystem.js').then(m => m.logEvent("Đã vào Chế độ Điện Ảnh. Bấm phím 'C' hoặc 'ESC' để thoát."));
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
+        });
+    }
+
+    window.addEventListener('keydown', e => {
+        if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+            if (document.body.classList.contains('cinematic')) {
+                document.body.classList.remove('cinematic');
+                setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
+            }
+        }
+    });
     
     ['grid', 'names', 'territory', 'effects', 'pause-ending', 'autosave', 'debug', 'sound'].forEach(s => {
         let el = document.getElementById(`set-${s}`);
@@ -200,7 +241,7 @@ export function inspectObject(tx, ty, wx, wy) {
     if (np) {
         found = np;
         let raceName = ENTITY_DATA.find(r => r.id === np.raceId)?.name || np.raceId;
-        desc = `<b>${np.name}</b> (Tuổi: ${Math.floor(np.age)}) ${np.favorite ? '⭐' : ''}<br>
+        desc = `<b>${np.name}</b> (${np.gender || '?'}, Tuổi: ${Math.floor(np.age)}) ${np.favorite ? '⭐' : ''}<br>
                 Chủng tộc: ${raceName} | Nghề: ${np.job}<br>
                 Đặc điểm: ${np.traits ? np.traits.join(', ') : 'Không'}<br>
                 Máu: ${Math.floor(np.health)}/100 | Năng lượng: ${Math.floor(np.energy)}<br>
@@ -245,11 +286,11 @@ export function inspectObject(tx, ty, wx, wy) {
                     Dân số: ${t.population} người (Lính: ${soldiers}, Dân: ${workers}, Trẻ em: ${children})<br>
                     Lãnh đạo: ${leader ? leader.name : 'Không có'}<br>
                     Kho: 🪵 ${Math.floor(getTribeWood(t))} | 🥩 ${Math.floor(getTribeFood(t))} | ⛏️ Quặng: ${(t.inventory.iron_ore||0) + (t.inventory.copper||0)}<br>
-                    Điểm: 💡 ${t.researchPoints} | 🎭 ${t.culturePoints}`;
+                    Điểm: 🎭 ${t.culturePoints}`;
                     
                     if (t.kingdomId) {
                         let k = state.kingdoms.find(kg => kg.id === t.kingdomId);
-                        if (k) territoryStr += `<br>Vương quốc: <b style="color:${k.color};">${k.name}</b>`;
+                        if (k) territoryStr += `<br>Vương quốc: <b style="color:${k.color};">${k.name}</b> (Thời đại: ${k.currentEra || 'Stone Age'} | 💡 ${Math.floor(k.researchPoints||0)} RP)`;
                     }
                 }
             }
@@ -367,11 +408,37 @@ export function updateUITabs() {
         }
     }
     
-    if (document.getElementById('tab-kingdom').classList.contains('active')) {
+    if (document.getElementById('tab-kingdom') && document.getElementById('tab-kingdom').classList.contains('active')) {
         document.getElementById('civ-pop').innerText = state.npcs.length;
         let list = document.getElementById('kingdom-list');
         list.innerHTML = state.kingdoms.map(k => `<li style="cursor:pointer" onclick="centerCamera(${k.capitalX*TILE_SIZE},${k.capitalY*TILE_SIZE}); inspectObject(${k.capitalX},${k.capitalY},${k.capitalX},${k.capitalY})"><span style="color:${k.color}">■</span> ${k.name} - Dân số: ${k.population}</li>`).join('');
     }
+
+    if (document.getElementById('tab-civ') && document.getElementById('tab-civ').classList.contains('active')) {
+        let list = document.getElementById('civ-list');
+        if (state.kingdoms.length === 0) {
+            list.innerHTML = '<li style="color:#bdc3c7;font-style:italic">Chưa có vương quốc nào hình thành...</li>';
+        } else {
+            list.innerHTML = state.kingdoms.map(k => `
+                <li style="border-left:3px solid ${k.color};padding-left:8px;margin-bottom:10px;">
+                    <b style="color:${k.color}">${k.name}</b> (LV ${k.civilizationLevel || 1})<br>
+                    <span style="font-size:12px; color:#f1c40f;">Thời đại: <b>${k.currentEra || "Stone Age"}</b></span><br>
+                    <div style="background:#34495e;border-radius:3px;height:5px;margin-top:3px;margin-bottom:3px;">
+                        <div style="background:#2ecc71;border-radius:3px;height:5px;width:${k.eraProgress || 0}%"></div>
+                    </div>
+                    <span style="font-size:11px">
+                        🔬 Khoa học: ${Math.floor(k.scienceScore || 0)} | 
+                        ⚙️ Công nghiệp: ${Math.floor(k.industrialScore || 0)} <br>
+                        📚 Giáo dục: ${Math.floor(k.educationScore || 0)} | 
+                        🎭 Văn hóa: ${Math.floor(k.cultureScore || 0)} <br>
+                        🧪 Kỹ thuật: ${Math.floor(k.technologyScore || 0)} | 
+                        💡 RP: ${Math.floor(k.researchPoints || 0)}
+                    </span>
+                </li>
+            `).join('');
+        }
+    }
+
     
     if (document.getElementById('tab-story').classList.contains('active')) {
         let score = state.worldDramaScore || 0;
@@ -400,49 +467,78 @@ export function updateUITabs() {
     if (document.getElementById('tab-tech') && document.getElementById('tab-tech').classList.contains('active')) {
         const techList = document.getElementById('global-tech-list');
         const avgEl = document.getElementById('tech-avg-pts');
+        const leaderEl = document.getElementById('tech-leader');
+        const rankingList = document.getElementById('tech-ranking-list');
+        const treeDisplay = document.getElementById('tech-tree-display');
         if (!techList) return;
 
-        const AGE_ICONS = ['🪨', '🔥', '🌾', '👑', '⚔️'];
-        const AGE_NAMES = ['Nguyên thủy', 'Bộ lạc', 'Nông nghiệp', 'Vương quốc', 'Trung cổ'];
-        const AGE_THRESHOLDS = [0, 500, 2000, 5000, 10000];
+        let totalRP = 0;
+        let sortedKingdoms = [...state.kingdoms].sort((a, b) => {
+            let aScore = (a.technologies ? a.technologies.length * 100 : 0) + (a.researchPoints || 0);
+            let bScore = (b.technologies ? b.technologies.length * 100 : 0) + (b.researchPoints || 0);
+            return bScore - aScore;
+        });
 
-        // Điểm trung bình
-        if (avgEl) {
-            const avg = state.tribes.length > 0
-                ? Math.floor(state.tribes.reduce((s, t) => s + (t.researchPoints || 0), 0) / state.tribes.length)
-                : 0;
+        if (sortedKingdoms.length > 0) {
+            leaderEl.innerText = sortedKingdoms[0].name;
+            let avg = Math.floor(sortedKingdoms.reduce((s, k) => s + (k.researchPoints || 0), 0) / sortedKingdoms.length);
             avgEl.innerText = avg;
+            
+            rankingList.innerHTML = sortedKingdoms.slice(0, 5).map((k, idx) => `
+                <li>#${idx + 1} <b style="color:${k.color}">${k.name}</b> - Techs: ${k.technologies ? k.technologies.length : 0} | Đột phá: ${k.breakthroughs || 0}</li>
+            `).join('');
+        } else {
+            leaderEl.innerText = "Chưa có";
+            avgEl.innerText = 0;
+            rankingList.innerHTML = "<li>Chưa có vương quốc nào</li>";
         }
 
-        // Hiển thị từng bộ lạc với thanh tiến trình Era
-        techList.innerHTML = state.tribes.map(t => {
-            const pts = Math.floor(t.researchPoints || 0);
-            const ageIdx = Math.max(0, AGE_NAMES.indexOf(t.ageLevel && t.ageLevel.replace('Thời kỳ ', '') || 'Nguyên thủy'));
-            const currentAgeIdx = ['Thời kỳ nguyên thủy','Thời kỳ bộ lạc','Thời kỳ nông nghiệp','Thời kỳ vương quốc','Thời kỳ trung cổ'].indexOf(t.ageLevel || 'Thời kỳ nguyên thủy');
-            const safeAgeIdx = Math.max(0, currentAgeIdx);
-            const nextThreshold = AGE_THRESHOLDS[safeAgeIdx + 1] || AGE_THRESHOLDS[AGE_THRESHOLDS.length - 1];
-            const prevThreshold = AGE_THRESHOLDS[safeAgeIdx] || 0;
-            const progress = nextThreshold > prevThreshold
-                ? Math.min(100, Math.floor(((pts - prevThreshold) / (nextThreshold - prevThreshold)) * 100))
-                : 100;
+        // Hiện tiến trình nghiên cứu hiện tại của từng Kingdom
+        techList.innerHTML = state.kingdoms.map(k => {
+            let currentTechHtml = `<span style="font-size:11px;color:#bdc3c7">Đang không nghiên cứu gì...</span>`;
+            if (k.currentResearch) {
+                let t = getTechById(k.currentResearch);
+                if (t) {
+                    let progress = Math.min(100, Math.floor((k.researchPoints / t.cost) * 100));
+                    currentTechHtml = `
+                        <span style="font-size:12px">Đang nghiên cứu: <b>${t.name}</b> (${t.category})</span><br>
+                        <div style="background:#34495e;border-radius:3px;height:6px;margin:3px 0;width:100%">
+                            <div style="background:#9b59b6;border-radius:3px;height:6px;width:${progress}%;transition:width 0.5s"></div>
+                        </div>
+                        <span style="font-size:10px;color:#bdc3c7">${Math.floor(k.researchPoints)} / ${t.cost} RP (+${Math.floor(k.scienceOutput||0)}/tick)</span>
+                    `;
+                }
+            }
 
-            // Giao thương: các đồng minh
-            const allies = Object.entries(t.diplomacy || {})
-                .filter(([, rel]) => rel === 'alliance')
-                .map(([id]) => state.tribes.find(tr => tr.id === parseInt(id))?.name)
-                .filter(Boolean);
-
-            return `<li style="margin-bottom:10px; border-left:3px solid ${t.color}; padding-left:8px;">
-                <b style="color:${t.color}">${t.name}</b>
-                <span style="float:right;font-size:11px;color:#bdc3c7">${t.level} | Dân: ${t.population}</span><br>
-                <span style="font-size:12px">🔬 ${t.ageLevel || 'Thời kỳ nguyên thủy'}</span><br>
-                <div style="background:#34495e;border-radius:3px;height:6px;margin:3px 0;width:100%">
-                    <div style="background:#3498db;border-radius:3px;height:6px;width:${progress}%;transition:width 0.5s"></div>
-                </div>
-                <span style="font-size:10px;color:#bdc3c7">💡 ${pts} pts → ${nextThreshold} pts (${progress}%)</span><br>
-                <span style="font-size:10px;color:#2ecc71">${allies.length > 0 ? '🤝 Đồng minh thương mại: ' + allies.join(', ') : '🔒 Chưa có liên minh'}</span>
+            return `<li style="margin-bottom:10px; border-left:3px solid ${k.color}; padding-left:8px;">
+                <b style="color:${k.color}">${k.name}</b> - ${k.currentEra || "Stone Age"}<br>
+                ${currentTechHtml}
             </li>`;
         }).join('');
+
+        // Hiện toàn bộ cây công nghệ
+        if (treeDisplay && state.ticks % 60 === 0) { // Only update tree rarely to save perf
+            let treeHtml = "";
+            let eras = Object.values(ERAS);
+            eras.forEach(era => {
+                let techsInEra = TECHNOLOGY_TREE.filter(t => t.era === era);
+                if (techsInEra.length > 0) {
+                    treeHtml += `<h5 style="color:#f1c40f; margin-top:5px; margin-bottom:2px;">${era}</h5>`;
+                    techsInEra.forEach(t => {
+                        let knownBy = state.kingdoms.filter(k => k.technologies && k.technologies.includes(t.id)).map(k => k.name).join(', ');
+                        let colorStr = knownBy ? "#2ecc71" : "#bdc3c7";
+                        treeHtml += `
+                            <div style="font-size:11px; margin-bottom:2px; border-left:2px solid ${colorStr}; padding-left:5px;">
+                                <b style="color:${colorStr}">${t.name}</b> (${t.cost} RP) - ${t.description}<br>
+                                <span style="font-size:9px; color:#7f8c8d;">Unlocks: ${t.unlocks.join(', ')}</span><br>
+                                <span style="font-size:9px; color:#95a5a6;">Sở hữu: ${knownBy || 'Chưa ai có'}</span>
+                            </div>
+                        `;
+                    });
+                }
+            });
+            treeDisplay.innerHTML = treeHtml;
+        }
     }
 }
 

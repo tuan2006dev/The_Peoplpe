@@ -207,6 +207,8 @@ export function updateBosses() {
                 for(let i=0; i<5; i++) {
                     if (state.houses.length > 0) {
                         let idx = Math.floor(Math.random() * state.houses.length);
+                        let h = state.houses[idx];
+                        state.npcs.forEach(n => { if (n.homeId === h.id) n.homeId = null; });
                         state.houses.splice(idx, 1);
                     }
                 }

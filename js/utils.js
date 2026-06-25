@@ -1,5 +1,5 @@
 import { state } from './gameState.js';
-import { COLS, ROWS } from './config.js';
+import { COLS, ROWS, TERRAIN } from './config.js';
 import { ENTITY_DATA } from './data/races.js';
 import { BIOME_EFFECTS } from './data/constants.js';
 import { RESOURCES, RESOURCE_GROUPS } from './data/resources.js';
@@ -61,6 +61,11 @@ export function addTribeResource(t, resId, amount) {
     t.inventory[resId] += amount;
 }
 
+export function getTribeHousingCap(tribeId) {
+    let houses = state.houses.filter(h => h.tribeId === tribeId).length;
+    return Math.max(houses * 4, 10);
+}
+
 export function playSound(name) {
     if (state.settings.sound) {
         console.log(`[SOUND] Playing: ${name}`);
@@ -89,10 +94,18 @@ export function moveTowards(npc, tx, ty) {
             let nextY = npc.y + (dy/dist) * speed;
             let nX_r = Math.round(nextX), nY_r = Math.round(nextY);
             
-            // Logic Nước Sâu và Thuyền
             let raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
             let validTerrain = raceData ? raceData.terrainAffinity : null;
-            let isLandRace = !validTerrain || !validTerrain.includes(1);
+            let isLandRace = !validTerrain || !validTerrain.includes(TERRAIN.NUOC);
+            
+            if (nX_r >= 0 && nX_r < COLS && nY_r >= 0 && nY_r < ROWS && state.grid[nX_r] && state.grid[nX_r][nY_r] === TERRAIN.NUI && isLandRace && !validTerrain?.includes(TERRAIN.NUI)) {
+                return;
+            }
+
+            // Logic Nước Sâu và Thuyền
+            raceData = npc.raceId ? ENTITY_DATA.find(r => r.id === npc.raceId) : null;
+            validTerrain = raceData ? raceData.terrainAffinity : null;
+            isLandRace = !validTerrain || !validTerrain.includes(TERRAIN.NUOC);
             
             if (isLandRace && isDeepWater(nX_r, nY_r)) {
                 if (npc.hasShip) {

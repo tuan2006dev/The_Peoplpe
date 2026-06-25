@@ -13,6 +13,37 @@ let patterns = {};
 let lastMinimapTick = -1;
 let minimapImageData = null;
 
+export const terrainCanvas = document.createElement('canvas');
+let tCtx = null;
+export let terrainNeedsUpdate = true;
+
+export function invalidateTerrain() {
+    terrainNeedsUpdate = true;
+}
+
+export function drawTerrainFull() {
+    if (!tCtx) {
+        terrainCanvas.width = COLS * TILE_SIZE;
+        terrainCanvas.height = ROWS * TILE_SIZE;
+        tCtx = terrainCanvas.getContext('2d');
+    }
+    tCtx.fillStyle = '#1e272e';
+    tCtx.fillRect(0, 0, terrainCanvas.width, terrainCanvas.height);
+    for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < ROWS; y++) {
+            let tile = state.grid[x][y];
+            let biome = state.envGrid[x][y] ? state.envGrid[x][y].biome : null;
+            tCtx.fillStyle = (biome && patterns[biome]) ? patterns[biome] : (patterns[tile] || COLORS[tile]);
+            tCtx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE + 1, TILE_SIZE + 1);
+            if (tile === TERRAIN.NUI) {
+                tCtx.fillStyle = 'rgba(0,0,0,0.3)';
+                tCtx.beginPath(); tCtx.moveTo(x*TILE_SIZE+14, y*TILE_SIZE+16); tCtx.lineTo(x*TILE_SIZE+20, y*TILE_SIZE+16); tCtx.lineTo(x*TILE_SIZE+16, y*TILE_SIZE+6); tCtx.fill();
+            }
+        }
+    }
+    terrainNeedsUpdate = false;
+}
+
 export function createTextures() {
     let createPattern = (color1, size, type) => {
         let c = document.createElement('canvas'); c.width = size; c.height = size;
@@ -41,6 +72,66 @@ export function createTextures() {
         if(biome.includes('Sa mạc') || biome.includes('Đất hoang')) type = 'noise';
         patterns[biome] = createPattern(BIOME_COLORS[biome], TILE_SIZE, type);
     }
+
+    // Load modern terrain textures
+    const textureFiles = {
+        "Đồng bằng": "grass.png",
+        "Đồi cỏ": "grass.png",
+        "Rừng già": "forest.png",
+        "Rừng ngập mặn": "forest.png",
+        "Núi đá": "mountain.png",
+        "Núi lửa": "mountain.png",
+        "Sa mạc": "sand.png",
+        "Bãi biển": "sand.png",
+        "Vùng nước nông": "water.png",
+        "Vùng nước sâu": "water.png",
+        "Vực thẳm": "water.png"
+    };
+
+    for (let biome in textureFiles) {
+        let img = new Image();
+        img.src = "data/textures/" + textureFiles[biome];
+        img.onload = () => {
+            let c = document.createElement('canvas');
+            c.width = TILE_SIZE * 4;
+            c.height = TILE_SIZE * 4;
+            let ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            patterns[biome] = ctx.createPattern(c, 'repeat');
+            invalidateTerrain(); // Redraw terrain when pattern loaded
+        };
+    }
+
+    // Load entity sprites
+    window.entitySprites = {};
+    const spriteNames = [
+        'humanoid', 'monster', 'boss', 'animal', 'ship',
+        'house_tent', 'house_wood', 'house_stone',
+        'res_food', 'res_wood', 'res_stone', 'res_ore', 'res_misc'
+    ];
+    spriteNames.forEach(name => {
+        let img = new Image();
+        img.src = "data/textures/" + name + ".png";
+        img.onload = () => {
+            let c = document.createElement('canvas');
+            c.width = img.width; c.height = img.height;
+            let ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            let imgData = ctx.getImageData(0, 0, c.width, c.height);
+            let d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+                if (d[i] > 240 && d[i+1] > 240 && d[i+2] > 240) {
+                    d[i+3] = 0; // Make white/near-white transparent
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            let tImg = new Image();
+            tImg.src = c.toDataURL();
+            window.entitySprites[name] = tImg;
+        };
+        // Temporary fallback while processing
+        window.entitySprites[name] = img;
+    });
 }
 
 export function updateParticles() {
@@ -71,46 +162,23 @@ export function draw() {
     ctx.translate(state.camera.x, state.camera.y);
     ctx.scale(state.camera.zoom, state.camera.zoom);
 
-    let visTiles = 0;
-    for (let x = startCol; x < endCol; x++) {
-        for (let y = startRow; y < endRow; y++) {
-            visTiles++;
-            let tile = state.grid[x][y];
-            let biome = state.envGrid[x][y] ? state.envGrid[x][y].biome : null;
-            ctx.fillStyle = (biome && patterns[biome]) ? patterns[biome] : (patterns[tile] || COLORS[tile]);
-            
-            if (tile === TERRAIN.NUOC) {
-                if (state.camera.zoom > 0.5) {
-                    ctx.save();
-                    ctx.translate(x*TILE_SIZE, y*TILE_SIZE);
-                    let offset = Math.sin(state.time.frames * 0.1 + x + y) * 2;
-                    ctx.translate(offset, 0);
-                    ctx.fillRect(-offset, 0, TILE_SIZE, TILE_SIZE);
-                    ctx.restore();
-                } else {
-                    ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            } else if (tile === TERRAIN.RUNG) {
-                if (state.camera.zoom > 0.5) {
-                    ctx.save();
-                    ctx.translate(x*TILE_SIZE, y*TILE_SIZE);
-                    let skew = Math.sin(state.time.frames * 0.05 + x) * 0.1;
-                    ctx.transform(1, 0, skew, 1, 0, 0);
-                    ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
-                    ctx.restore();
-                } else {
-                    ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            } else {
-                ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                if (tile === TERRAIN.NUI) {
-                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                    ctx.beginPath(); ctx.moveTo(x*TILE_SIZE+14, y*TILE_SIZE+16); ctx.lineTo(x*TILE_SIZE+20, y*TILE_SIZE+16); ctx.lineTo(x*TILE_SIZE+16, y*TILE_SIZE+6); ctx.fill();
-                }
-            }
-            
-            if (state.settings.showGrid) { ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
+    if (terrainNeedsUpdate) drawTerrainFull();
+    ctx.drawImage(terrainCanvas, 0, 0);
+
+    let visTiles = (endCol - startCol) * (endRow - startRow);
+
+    if (state.settings.showGrid) { 
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; 
+        ctx.beginPath();
+        for (let x = startCol; x <= endCol; x++) {
+            ctx.moveTo(x*TILE_SIZE, startRow*TILE_SIZE);
+            ctx.lineTo(x*TILE_SIZE, endRow*TILE_SIZE);
         }
+        for (let y = startRow; y <= endRow; y++) {
+            ctx.moveTo(startCol*TILE_SIZE, y*TILE_SIZE);
+            ctx.lineTo(endCol*TILE_SIZE, y*TILE_SIZE);
+        }
+        ctx.stroke();
     }
     
     // Territories (Tribes & Kingdoms)
@@ -235,12 +303,22 @@ export function draw() {
             let px = res.x * TILE_SIZE + TILE_SIZE/2;
             let py = res.y * TILE_SIZE + TILE_SIZE/2;
             
-            // Vẽ bóng đen bên dưới emoji cho rõ
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath(); ctx.arc(px, py + 2, 4, 0, Math.PI*2); ctx.fill();
-            
-            ctx.font = '12px Arial';
-            ctx.fillText(res.emoji, px, py);
+            let resSpriteKey = 'res_misc';
+            if (['wheat', 'vegetable', 'fruit', 'grapes', 'meat', 'milk', 'egg', 'fish', 'mushroom', 'honey'].includes(res.id)) resSpriteKey = 'res_food';
+            else if (['timber', 'hardwood'].includes(res.id)) resSpriteKey = 'res_wood';
+            else if (['stone', 'clay', 'sand', 'limestone'].includes(res.id)) resSpriteKey = 'res_stone';
+            else if (['iron_ore', 'copper', 'gold', 'silver', 'mithril', 'obsidian', 'sulfur', 'gems'].includes(res.id)) resSpriteKey = 'res_ore';
+
+            if (window.entitySprites && window.entitySprites[resSpriteKey] && window.entitySprites[resSpriteKey].complete) {
+                ctx.drawImage(window.entitySprites[resSpriteKey], px - 8, py - 8, 16, 16);
+            } else {
+                // Vẽ bóng đen bên dưới emoji cho rõ
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath(); ctx.arc(px, py + 2, 4, 0, Math.PI*2); ctx.fill();
+                
+                ctx.font = '12px Arial';
+                ctx.fillText(res.emoji, px, py);
+            }
             
             // Vẽ cọc/hộp lưu trữ nếu là tài nguyên khoáng sản/gỗ
             if (res.type === 'Khai thác' || res.type === 'Thu thập') {
@@ -256,16 +334,28 @@ export function draw() {
     state.houses.forEach(h => {
         let hx = h.x * TILE_SIZE, hy = h.y * TILE_SIZE;
         if (hx >= v.sx && hx <= v.ex && hy >= v.sy && hy <= v.ey) {
-            if (h.type === 'Nhà gỗ') {
-                ctx.fillStyle = '#d35400'; ctx.fillRect(hx+2, hy+2, TILE_SIZE-4, TILE_SIZE-4);
-                ctx.fillStyle = '#8e44ad'; ctx.fillRect(hx+TILE_SIZE/2-2, hy-2, 4, 4); // Chimney
-            } else if (h.type === 'Nhà đá') {
-                ctx.fillStyle = '#7f8c8d'; ctx.fillRect(hx+2, hy+2, TILE_SIZE-4, TILE_SIZE-4);
-                ctx.fillStyle = '#bdc3c7'; ctx.fillRect(hx+4, hy+4, TILE_SIZE-8, TILE_SIZE-8);
-                ctx.fillStyle = '#c0392b'; ctx.fillRect(hx+TILE_SIZE/2-3, hy-4, 6, 6); // Flag/chimney
-            } else { // Lều cỏ default
-                ctx.fillStyle = '#e67e22'; ctx.fillRect(hx+2, hy+4, TILE_SIZE-4, TILE_SIZE-4);
-                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(hx, hy+4); ctx.lineTo(hx+TILE_SIZE/2, hy-2); ctx.lineTo(hx+TILE_SIZE, hy+4); ctx.fill();
+            let hSpriteKey = h.type === 'Nhà gỗ' ? 'house_wood' : (h.type === 'Nhà đá' ? 'house_stone' : 'house_tent');
+
+            if (window.entitySprites && window.entitySprites[hSpriteKey] && window.entitySprites[hSpriteKey].complete) {
+                // Drop shadow for house
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.ellipse(hx + TILE_SIZE/2, hy + TILE_SIZE, TILE_SIZE/1.8, TILE_SIZE/4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Draw house sprite scaled slightly up or fitting the tile
+                ctx.drawImage(window.entitySprites[hSpriteKey], hx, hy - 4, TILE_SIZE, TILE_SIZE + 4);
+            } else {
+                if (h.type === 'Nhà gỗ') {
+                    ctx.fillStyle = '#d35400'; ctx.fillRect(hx+2, hy+2, TILE_SIZE-4, TILE_SIZE-4);
+                    ctx.fillStyle = '#8e44ad'; ctx.fillRect(hx+TILE_SIZE/2-2, hy-2, 4, 4); // Chimney
+                } else if (h.type === 'Nhà đá') {
+                    ctx.fillStyle = '#7f8c8d'; ctx.fillRect(hx+2, hy+2, TILE_SIZE-4, TILE_SIZE-4);
+                    ctx.fillStyle = '#bdc3c7'; ctx.fillRect(hx+4, hy+4, TILE_SIZE-8, TILE_SIZE-8);
+                    ctx.fillStyle = '#c0392b'; ctx.fillRect(hx+TILE_SIZE/2-3, hy-4, 6, 6); // Flag/chimney
+                } else { // Lều cỏ default
+                    ctx.fillStyle = '#e67e22'; ctx.fillRect(hx+2, hy+4, TILE_SIZE-4, TILE_SIZE-4);
+                    ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(hx, hy+4); ctx.lineTo(hx+TILE_SIZE/2, hy-2); ctx.lineTo(hx+TILE_SIZE, hy+4); ctx.fill();
+                }
             }
             if (state.selectedHouseId === h.id) {
                 ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.strokeRect(hx, hy, TILE_SIZE, TILE_SIZE);
@@ -278,30 +368,46 @@ export function draw() {
             let px = n.x*TILE_SIZE + 8; let py = n.y*TILE_SIZE + 8;
             let walkY = Math.sin(n.walkCycle) * 2;
             
+            let spriteKey = 'humanoid';
             if (n.isSailing) {
-                ctx.fillStyle = '#d35400';
-                ctx.beginPath(); ctx.moveTo(px - 6, py - 2 + walkY); ctx.lineTo(px + 6, py - 2 + walkY);
-                ctx.lineTo(px + 4, py + 4 + walkY); ctx.lineTo(px - 4, py + 4 + walkY); ctx.fill();
-                
-                ctx.fillStyle = '#ecf0f1';
-                ctx.beginPath(); ctx.moveTo(px, py - 8 + walkY); ctx.lineTo(px + 4, py - 2 + walkY);
-                ctx.lineTo(px, py - 2 + walkY); ctx.fill();
+                spriteKey = 'ship';
+            } else if (['dragon', 'leviathan', 'titan', 'kraken_elder', 'void_wyrm', 'death_knight', 'troll_king', 'dire_bear', 'alpha_wolf', 'fae_king'].includes(n.raceId)) {
+                spriteKey = 'boss';
+            } else if (['cow', 'sheep', 'goat', 'pig', 'chicken', 'duck', 'deer', 'rabbit', 'moose', 'salmon', 'giant_crab', 'horse', 'donkey', 'camel', 'elephant'].includes(n.raceId)) {
+                spriteKey = 'animal';
+            } else if (['human', 'elf', 'dwarf', 'halfling', 'centaur', 'draconian', 'lich', 'merfolk'].includes(n.raceId)) {
+                spriteKey = 'humanoid';
             } else {
-                ctx.fillStyle = n.id === state.selectedNpcId ? '#f1c40f' : (n.isSoldier ? '#e74c3c' : '#dcdde1');
-                let isPossessed = state.possession && state.possession.active && state.possession.npcId === n.id;
-                let tribe = state.tribes.find(tr => tr.id === n.tribeId);
-                let isHero = tribe && tribe.isHeroTribe;
-                
-                if (isPossessed || isHero) {
-                    ctx.shadowColor = isPossessed ? '#e67e22' : '#f1c40f';
-                    ctx.shadowBlur = 15;
-                    if (isPossessed) ctx.fillStyle = '#e67e22';
-                    else if (n.isSoldier) ctx.fillStyle = '#e74c3c';
-                    else ctx.fillStyle = '#f1c40f';
-                }
-                ctx.beginPath(); ctx.arc(px, py + walkY, 4, 0, Math.PI*2); ctx.fill();
-                if (isPossessed || isHero) ctx.shadowBlur = 0;
+                spriteKey = 'monster'; // Default for goblin, orc, troll, minotaur, etc.
             }
+
+            let isPossessed = state.possession && state.possession.active && state.possession.npcId === n.id;
+            let tribe = state.tribes.find(tr => tr.id === n.tribeId);
+            let isHero = tribe && tribe.isHeroTribe;
+            
+            if (isPossessed || isHero || n.id === state.selectedNpcId) {
+                ctx.shadowColor = isPossessed ? '#e67e22' : (n.id === state.selectedNpcId ? '#f1c40f' : '#3498db');
+                ctx.shadowBlur = 10;
+            }
+
+            let w = spriteKey === 'boss' ? 24 : 16;
+            let h = spriteKey === 'boss' ? 24 : 16;
+
+            if (window.entitySprites && window.entitySprites[spriteKey] && window.entitySprites[spriteKey].complete) {
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(px, py + h/2 - 2, w/2.5, h/5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Draw sprite
+                ctx.drawImage(window.entitySprites[spriteKey], px - w/2, py - h/2 + walkY, w, h);
+            } else {
+                // Fallback
+                ctx.fillStyle = n.id === state.selectedNpcId ? '#f1c40f' : (n.isSoldier ? '#e74c3c' : '#dcdde1');
+                ctx.beginPath(); ctx.arc(px, py + walkY, 4, 0, Math.PI*2); ctx.fill();
+            }
+
+            if (isPossessed || isHero || n.id === state.selectedNpcId) ctx.shadowBlur = 0;
             
             // Draw indicators
             if (n.state === 'praying') {
@@ -321,8 +427,15 @@ export function draw() {
     
     if (state.settings.showEffects) {
         state.particles.forEach(p => {
-            ctx.fillStyle = p.color || (p.type==='bless'?'#f1c40f':p.type==='curse'?'#8e44ad':p.type==='heal'?'#2ecc71':'#fff');
-            ctx.fillRect(p.x, p.y, 2, 2);
+            if (p.type === 'heart') {
+                ctx.fillStyle = p.color || '#e84393';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('❤️', p.x, p.y);
+            } else {
+                ctx.fillStyle = p.color || (p.type==='bless'?'#f1c40f':p.type==='curse'?'#8e44ad':p.type==='heal'?'#2ecc71':'#fff');
+                ctx.fillRect(p.x, p.y, 2, 2);
+            }
         });
         state.effects.forEach(e => {
             if (e.type === 'mua') { ctx.fillStyle = 'rgba(52, 152, 219, 0.2)'; ctx.beginPath(); ctx.arc(e.x*TILE_SIZE, e.y*TILE_SIZE, e.radius, 0, Math.PI*2); ctx.fill(); }
@@ -346,6 +459,16 @@ export function draw() {
                 }
             }
         }
+    }
+
+    // Day/Night tint
+    let hour = Math.floor(state.time.frames / (state.time.framesPerDay / 24));
+    if (hour < 6 || hour > 18) {
+        ctx.fillStyle = 'rgba(10, 10, 30, 0.4)'; // Night tint
+        ctx.fillRect(v.sx, v.sy, v.ex - v.sx, v.ey - v.sy);
+    } else if (hour < 8 || hour > 16) {
+        ctx.fillStyle = 'rgba(230, 126, 34, 0.1)'; // Dawn/Dusk tint
+        ctx.fillRect(v.sx, v.sy, v.ex - v.sx, v.ey - v.sy);
     }
 
     ctx.restore();

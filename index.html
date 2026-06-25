@@ -23,6 +23,7 @@
         <div class="top-controls">
             <button class="icon-btn" id="btn-guide" title="Cẩm Nang Hướng Dẫn" style="font-size:14px; background:#d4af37; color:#1a1a24; border-radius:15px; padding:2px 10px; font-weight:bold; cursor:pointer; border:none; margin-right: 10px;">❓ Hướng Dẫn</button>
             <button class="icon-btn" id="btn-sound" title="Bật/Tắt âm thanh">🔇</button>
+            <button class="icon-btn" id="btn-cinematic" title="Chế độ Điện Ảnh">👁️</button>
             <div id="speed-controls">
                 <button class="speed-btn" data-speed="0">⏸</button>
                 <button class="speed-btn active" data-speed="1">1x</button>
@@ -54,58 +55,98 @@
                     <h2>📖 Cẩm Nang Thần Thánh: The People</h2>
                     <span id="close-guide-modal" class="close-btn">&times;</span>
                 </div>
-                <div class="modal-body" style="text-align: left; line-height: 1.6; padding: 10px;">
-                    <p>Chào mừng bạn đến với <b>The People</b>! Trong trò chơi này, bạn đóng vai một vị Thần tối cao. Nhiệm vụ của bạn là tạo ra một thế giới, gieo rắc sự sống và quan sát các sinh vật phát triển, xây dựng nền văn minh của riêng chúng.</p>
-                    <hr class="separator">
-                    
-                    <h3 class="gold-text">🌍 1. Cách Tạo Hình Thế Giới</h3>
-                    <p>Mọi thứ bắt đầu từ đôi bàn tay của bạn. Hãy sử dụng thanh công cụ bên trái màn hình để tự do vẽ nên hình hài của lục địa:</p>
-                    <ul style="margin-left: 20px; margin-bottom: 15px;">
-                        <li><b>Đồng bằng (Xanh lá):</b> Nơi tuyệt vời nhất để con người sinh sống, xây dựng lều trại và làm nông nghiệp.</li>
-                        <li><b>Nước (Xanh dương):</b> Nơi cung cấp tôm cá. Các bộ lạc sống gần nước có thể học cách đóng thuyền và vượt biển.</li>
-                        <li><b>Rừng già:</b> Nơi cung cấp gỗ quý để xây nhà cửa kiên cố. Tuy nhiên nếu chặt phá quá nhiều cây, các vị thần hộ mệnh của rừng có thể nổi giận!</li>
-                        <li><b>Núi đá & Núi lửa:</b> Chứa nhiều khoáng sản như sắt, đồng, vàng quý giá, nhưng khí hậu lại cực kỳ khắc nghiệt.</li>
-                    </ul>
-                    <p><i>Mẹo nhỏ:</i> Bạn có thể cuộn chuột để phóng to/thu nhỏ tầm nhìn. Nhấn giữ chuột trái và kéo để vẽ địa hình, hoặc điều chỉnh "Kích thước cọ" (ở menu trái) để vẽ mảng lớn nhanh hơn.</p>
+                <div class="modal-body" style="text-align: left; line-height: 1.6; padding: 0;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid #34495e;">
+                        <p>Chào mừng bạn đến với <b>The People</b>! Trong trò chơi này, bạn đóng vai một vị Thần tối cao. Nhiệm vụ của bạn là tạo ra một thế giới, gieo rắc sự sống và quan sát các sinh vật phát triển, xây dựng nền văn minh của riêng chúng.</p>
+                    </div>
 
-                    <h3 class="gold-text">🧍 2. Gieo Mầm Sự Sống</h3>
-                    <p>Sau khi đã có đất đai, hãy dùng công cụ <b>Tạo người</b> thả một vài người xuống đất. Ban đầu họ sẽ đi lang thang, tìm hái quả mọng, đốn củi và tự dựng lều để ngủ qua đêm.</p>
-                    <p>Khi tìm thấy những người khác và thu thập đủ tài nguyên, họ sẽ tự động bắt cặp, sinh con đẻ cái và lập thành một <b>Bộ Lạc</b>. Từ thời điểm đó, bộ lạc sẽ bầu ra Trưởng làng, xây dựng kho lương thực chung và dần dần mở rộng bờ cõi (các ô có màu nhạt trên nền đất).</p>
+                    <!-- Guide Tabs Header -->
+                    <div class="guide-tabs" style="display: flex; background: #1a1a24; border-bottom: 2px solid #2c3e50; overflow-x: auto;">
+                        <button class="guide-tab-btn active" data-target="gtab-terrain" style="flex:1; padding:10px; background:none; border:none; border-bottom: 2px solid #3498db; color:#3498db; cursor:pointer; font-weight:bold;">🌍 Địa Hình</button>
+                        <button class="guide-tab-btn" data-target="gtab-life" style="flex:1; padding:10px; background:none; border:none; color:#ecf0f1; cursor:pointer; font-weight:bold;">🧍 Sinh Mệnh</button>
+                        <button class="guide-tab-btn" data-target="gtab-powers" style="flex:1; padding:10px; background:none; border:none; color:#ecf0f1; cursor:pointer; font-weight:bold;">⚡ Quyền Năng</button>
+                        <button class="guide-tab-btn" data-target="gtab-society" style="flex:1; padding:10px; background:none; border:none; color:#ecf0f1; cursor:pointer; font-weight:bold;">⚔️ Xã Hội</button>
+                        <button class="guide-tab-btn" data-target="gtab-creatures" style="flex:1; padding:10px; background:none; border:none; color:#ecf0f1; cursor:pointer; font-weight:bold;">🐉 Sinh Vật</button>
+                        <button class="guide-tab-btn" data-target="gtab-interact" style="flex:1; padding:10px; background:none; border:none; color:#ecf0f1; cursor:pointer; font-weight:bold;">🔍 Tương Tác</button>
+                    </div>
 
-                    <h3 class="gold-text">⚡ 3. Quyền Năng Của Thần</h3>
-                    <p>Dù không thể điều khiển trực tiếp từng người dân bằng chuột, bạn vẫn là một đấng toàn năng với các phép thuật thao túng thế giới (chọn ở Thanh công cụ bên trái):</p>
-                    <ul style="margin-left: 20px; margin-bottom: 15px;">
-                        <li><b>🌧️ Mưa & Nắng:</b> Điều chỉnh thời tiết để giúp cây cối tươi tốt, hoặc làm hạn hán sông ngòi.</li>
-                        <li><b>⚡ Sấm Sét & Động Đất:</b> Trừng phạt kẻ vô đạo, hoặc tạo ra các vụ cháy rừng lớn.</li>
-                        <li><b>🦠 Bệnh Dịch:</b> Thử thách sức bền của các vương quốc bằng những mầm bệnh lây lan.</li>
-                        <li><b>✨ Ban Phước / Nguyền Rủa:</b> Hồi máu, tăng sức mạnh cho người bạn yêu thích, hoặc làm cho kẻ địch trở nên yếu ớt.</li>
-                        <li><b>🗣️ Thánh Chỉ (Mệnh Lệnh):</b> Dùng công cụ "Kiểm tra" (hình con mắt) bấm vào một người, sau đó ban lệnh bắt họ làm theo ý bạn. Nhưng hãy coi chừng, nếu bạn không được tôn thờ, họ có thể ngoan cố từ chối lệnh của Thần!</li>
-                    </ul>
+                    <!-- Guide Tabs Content -->
+                    <div class="guide-tab-content" style="padding: 15px; font-size: 14px;">
+                        
+                        <!-- Tab 1: Terrain -->
+                        <div id="gtab-terrain" class="guide-tab-pane active">
+                            <h3 class="gold-text" style="margin-top:0;">🌍 Các Loại Địa Hình & Cơ Chế</h3>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><b>Đồng Bằng (Xanh lá):</b> Tốc độ di chuyển cơ bản (1.0). Đây là <b>nơi duy nhất</b> người dân có thể xây nhà, lập làng và làm nông nghiệp.</li>
+                                <li><b>Nước (Xanh dương):</b> Chứa tôm cá (thực phẩm). Tốc độ di chuyển rất chậm (0.2). NPC sẽ tự động biết bơi qua để sang bờ bên kia.</li>
+                                <li><b>Rừng Già (Xanh đậm):</b> Tốc độ di chuyển chậm (0.7). Cung cấp Gỗ (30 đơn vị/cây). <i>Lưu ý:</i> Nếu đốn hạ quá 50 cây rừng, có rủi ro rất cao đánh thức <b>Ent Cổ Thụ (Fae King)</b> đến trả thù nhân loại.</li>
+                                <li><b>Núi (Xám) & Núi Lửa:</b> Tốc độ di chuyển siêu chậm (0.5). Chứa tài nguyên khoáng sản (Quặng Đồng, Sắt, Uranium). Nếu để Núi Lửa phun trào quá 10 lần trên thế giới, <b>Titan Đá</b> sẽ thức tỉnh.</li>
+                                <li><b>Thời tiết:</b> Bạn có thể dùng phép Mưa để giảm 10°C và tăng 30% độ ẩm (giúp cây mọc), hoặc Nắng để tăng 20°C. Nếu nhiệt độ thế giới giảm xuống dưới -20°C, quái vật <b>Băng Sương Cự Thú</b> sẽ xuất hiện.</li>
+                            </ul>
+                        </div>
 
-                    <h3 class="gold-text">⚔️ 4. Xã Hội, Ngoại Giao & Chiến Tranh</h3>
-                    <p>Các bộ lạc không hề sống cô lập. Khi lớn mạnh, họ sẽ khám phá ra công nghệ mới, tiến hóa từ Thời Nguyên Thủy lên Thời Nông Nghiệp, rồi Thời Trung Cổ. Trong quá trình đó, họ sẽ:</p>
-                    <ul style="margin-left: 20px; margin-bottom: 15px;">
-                        <li>Giao thương, trao đổi tài nguyên và tặng quà cho nhau để thắt chặt tình hữu nghị (Liên minh).</li>
-                        <li>Gây chiến tranh, đem quân đi cướp đoạt tài nguyên nếu ghét nhau hoặc do lãnh thổ quá chật hẹp.</li>
-                        <li>Các bộ lạc lớn mạnh có thể thu phục các làng xung quanh để lập thành một <b>Vương Quốc</b> khổng lồ.</li>
-                    </ul>
+                        <!-- Tab 2: Life -->
+                        <div id="gtab-life" class="guide-tab-pane hidden">
+                            <h3 class="gold-text" style="margin-top:0;">🧍 Xã Hội & Sự Hình Thành Vương Quốc</h3>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><b>Khởi đầu:</b> Chọn công cụ `Tạo người` và click vào Đồng bằng. Mỗi người cần Ăn và Ngủ để hồi phục Máu & Năng Lượng. Mất hết máu sẽ chết.</li>
+                                <li><b>Lập Bộ Lạc:</b> Khi các NPC lang thang gom đủ Gỗ, họ sẽ dựng Túp lều. Những người ở gần nhau sẽ gộp lại thành <b>Bộ Lạc</b>, sinh con đẻ cái và bầu Trưởng Làng.</li>
+                                <li><b>Mở Rộng & Nâng Cấp:</b> Bộ lạc sẽ tự mở rộng lãnh thổ. Sức chứa tài nguyên mặc định là 50, khi bộ lạc tự xây được <i>Nhà Kho</i> sẽ tăng lên 200.</li>
+                                <li><b>Hình thành Vương Quốc:</b> Khi Bộ lạc đạt <b>20 dân số</b> trở lên, nó sẽ tiến hóa thành một <b>Vương Quốc</b>, có Vua, có Cờ riêng và bắt đầu sản sinh điểm Khoa học.</li>
+                                <li><i>Cảnh báo:</i> Nếu một bộ lạc phát triển quá mức (>100 dân hoặc chiếm đóng >50% diện tích đất liền), Vua Quỷ <b>Troll King</b> hoặc <b>Alpha Wolf</b> sẽ xuất hiện để trừng phạt sự bành trướng này.</li>
+                            </ul>
+                        </div>
 
-                    <h3 class="gold-text">🐉 5. Thần Thú & Sinh Vật Huyền Bí</h3>
-                    <p>Bạn không phải là thế lực siêu nhiên duy nhất. Trên thế giới còn có các sinh vật đáng sợ:</p>
-                    <ul style="margin-left: 20px; margin-bottom: 15px;">
-                        <li><b>Thú hoang:</b> Sói, Gấu, Nhện khổng lồ rình rập ở các vùng tối tăm.</li>
-                        <li><b>Boss Thế Giới:</b> Nếu con người phát triển quá tàn bạo (chặt rừng bừa bãi, tàn sát lẫn nhau), hoặc nếu bạn lạm dụng quá nhiều phép thuật hủy diệt, các Thần Thú cổ đại (như Rồng Nhện, Leviathan dưới biển sâu hay Vua Tiên) sẽ thức tỉnh để trừng phạt nhân loại.</li>
-                    </ul>
+                        <!-- Tab 3: Powers -->
+                        <div id="gtab-powers" class="guide-tab-pane hidden">
+                            <h3 class="gold-text" style="margin-top:0;">⚡ Quyền Năng Hệ Thống</h3>
+                            <p><i>Cảnh báo: Tích lũy sử dụng >1000 lần các phép thuật hủy diệt sẽ mở ra cánh cổng Hư Không, triệu hồi Void Wyrm!</i></p>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><b>Mưa / Nắng:</b> Thao túng trực tiếp nhiệt độ và độ ẩm, cứu cây trồng hoặc gây hạn hán.</li>
+                                <li><b>Sấm Sét / Động Đất:</b> Xóa sổ ngay lập tức các công trình xây dựng (Nhà cửa, Đền thờ) và gây 50-100 sát thương lên NPC.</li>
+                                <li><b>Dịch Bệnh:</b> Lây nhiễm Virus. Người bệnh bị rút máu liên tục và sẽ lây chéo cho tất cả NPC đứng gần trong bán kính 2 ô.</li>
+                                <li><b>Ban Phước:</b> Hồi 100% Máu và Năng Lượng cho NPC.</li>
+                                <li><b>🗣️ Thánh Chỉ (Mệnh Lệnh):</b> Đây là công cụ quyền lực nhất. <b>Cách dùng:</b> Click nút <i>Tra Cứu (Kính lúp)</i> -> Click vào 1 NPC -> Chọn công cụ <i>Thánh Chỉ</i> bên trái -> Nhập lệnh (VD: "Đi đốn củi", "Giết tên kia").<br><i>Lưu ý:</i> Nếu Đức Tin (Faith) và Lòng Trung Thành (Loyalty) của NPC quá thấp, chúng sẽ chống lại lệnh của Thần!</li>
+                            </ul>
+                        </div>
 
-                    <h3 class="gold-text">🔍 6. Theo Dõi & Tương Tác Cùng Nhau</h3>
-                    <p>Bạn có thể theo dõi rất nhiều diễn biến thông qua <b>Thanh Menu Phải</b>:</p>
-                    <ul style="margin-left: 20px; margin-bottom: 15px;">
-                        <li>Bấm vào mục <b>Cá Nhân</b> để xem ai đang làm gì. Trong cửa sổ thông tin của người đó, bạn có thể nhấn <i>"Ký ức & Nhật ký"</i> để đọc về tuổi thơ, những nỗi buồn hay niềm vui của họ, hoặc xem <i>"Gia phả"</i> để biết tổ tiên con cháu.</li>
-                        <li><b>Chế độ Nhập hồn (Possess):</b> Nút cực kỳ đặc biệt! Nó cho phép bạn hóa thân trực tiếp vào một người dân và điều khiển họ bằng bàn phím (phím W A S D) để tự mình trải nghiệm cuộc sống của người phàm!</li>
-                        <li>Hãy theo dõi các Tôn giáo mới hình thành, Lịch sử các sự kiện lớn, và Đẳng cấp Khoa học của các vương quốc để thấy thế giới vận hành kỳ diệu như thế nào.</li>
-                    </ul>
-                    
-                    <p style="text-align: center; margin-top: 20px; font-weight: bold; color: #2ecc71; font-size: 16px;">✨ Hãy tạo ra lục địa của riêng bạn và đón xem những câu chuyện vĩ đại nào sẽ được viết lên! ✨</p>
+                        <!-- Tab 4: Society -->
+                        <div id="gtab-society" class="guide-tab-pane hidden">
+                            <h3 class="gold-text" style="margin-top:0;">🔬 Cơ Chế Cây Công Nghệ</h3>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><b>Chuyển Kỷ Nguyên:</b> Game có 9 Thời Đại (Từ Stone Age -> Space Age). Vương quốc <b>BẮT BUỘC</b> phải nghiên cứu xong 100% công nghệ của thời đại hiện tại mới được phép nâng cấp lên thời đại tiếp theo.</li>
+                                <li><b>Điểm Nghiên Cứu (RP):</b> Sinh ra tự động mỗi giây. Các NPC có nghề nghiệp như <i>Nghiên cứu viên, Học giả, Kỹ sư</i> sẽ đóng góp lượng lớn RP.</li>
+                                <li><b>Nhân Tài:</b> Đột biến di truyền có thể sinh ra NPC mang Trait <b>Thiên Tài</b> (+10 RP/giây), hoặc <b>Nhà Phát Minh</b> (+5 RP). Hãy bảo vệ những vĩ nhân này khỏi chiến tranh!</li>
+                                <li><b>Giao Thoa Văn Hóa:</b> Nếu Vương quốc A đứng sát lãnh thổ Vương quốc B, hoặc có giao thương, công nghệ sẽ tự động lây lan chéo (có tỉ lệ học lỏm miễn phí).</li>
+                            </ul>
+                        </div>
+
+                        <!-- Tab 5: Creatures -->
+                        <div id="gtab-creatures" class="guide-tab-pane hidden">
+                            <h3 class="gold-text" style="margin-top:0;">🐉 Danh Sách Boss Thế Giới</h3>
+                            <p>Boss chỉ bắt đầu xuất hiện sau <b>Năm 50</b> của Game. Mỗi 10 năm mới có khả năng xuất hiện 1 Boss. Đánh bại Boss, tất cả người sống sót sẽ được cộng thẳng 20 chỉ số Chiến đấu vĩnh viễn.</p>
+                            <table style="width:100%; border-collapse: collapse; margin-bottom: 10px;">
+                                <tr style="border-bottom: 1px solid #34495e;"><th>Tên Boss</th><th>Điều Kiện Kích Hoạt (Thức Tỉnh)</th></tr>
+                                <tr><td><b>Leviathan</b></td><td>Đại dương chiếm >70% bản đồ.</td></tr>
+                                <tr><td><b>Titan Đá</b></td><td>Núi lửa phun trào quá 10 lần.</td></tr>
+                                <tr><td><b>Kraken Vĩ Đại</b></td><td>Hơn 100 xác chết trôi nổi ngoài biển khơi.</td></tr>
+                                <tr><td><b>Death Knight</b></td><td>Tổng số thương vong toàn cầu vượt 500 người.</td></tr>
+                                <tr><td><b>Ent Cổ Thụ</b></td><td>Rừng già bị phá hủy >50 cây.</td></tr>
+                                <tr><td><b>Void Wyrm</b></td><td>Bạn lạm dụng phép thuật >1000 lần.</td></tr>
+                            </table>
+                        </div>
+
+                        <!-- Tab 6: Interact -->
+                        <div id="gtab-interact" class="guide-tab-pane hidden">
+                            <h3 class="gold-text" style="margin-top:0;">🎮 Hướng Dẫn Thao Tác Bàn Phím</h3>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><b>Góc nhìn:</b> Chuột phải (hoặc nhấn chuột giữa) kéo để di chuyển bản đồ. Lăn chuột để Phóng to/Thu nhỏ.</li>
+                                <li><b>Thông tin NPC:</b> Chọn Kính lúp -> click vào người. Ở bảng Tra Cứu (Menu phải), bạn có thể nhấp <i>"Ký ức & Nhật ký"</i> để đọc toàn bộ lịch sử cuộc đời, tình yêu, đau khổ của người đó, hoặc xem <i>"Gia phả"</i> đa thế hệ.</li>
+                                <li><b>🕹️ Nhập Hồn (Possess Mode):</b> Nút cực kỳ thú vị ở Bảng Tra Cứu! Bấm `Nhập Hồn` để hóa thân trực tiếp vào một NPC. Khi đó, sử dụng phím <b>W A S D</b> để di chuyển, <b>Chuột trái</b> để tương tác/đánh nhau, hòa mình vào cuộc sống như một tựa game RPG sinh tồn thực thụ! Bấm phím <b>F</b> để thoát.</li>
+                                <li><b>Tua Nhanh Thời Gian:</b> Phía trên bên phải có các nút `x1, x2, x4, x10`. Mặc định 1 ngày (Tick) trôi qua mỗi giây. Dùng x10 để tăng tốc độ phát triển hàng trăm năm trong chốc lát!</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -213,6 +254,7 @@
                 <p>Tribes: <span id="dbg-tribes"></span> | Kingdoms: <span id="dbg-kingdoms"></span></p>
                 <p>Effects: <span id="dbg-effects"></span> | Particles: <span id="dbg-particles"></span></p>
                 <button onclick="window.runAutomatedTest(5000)" style="margin-top: 10px; width: 100%; padding: 5px; background: #e74c3c; color: white; font-weight: bold; border: none; cursor: pointer;">Chạy Auto Test (5000 Ticks)</button>
+                <button onclick="window.runHeadlessTests()" style="margin-top: 5px; width: 100%; padding: 5px; background: #9b59b6; color: white; font-weight: bold; border: none; cursor: pointer;">Chạy Unit Test Văn Minh</button>
                 <p>Cam: X:<span id="dbg-camx"></span> Y:<span id="dbg-camy"></span> Z:<span id="dbg-camz"></span></p>
                 <p>Vis Tiles: <span id="dbg-vistiles"></span></p>
                 <p>Upd: <span id="dbg-updtime"></span>ms | Ren: <span id="dbg-rentime"></span>ms</p>
@@ -313,6 +355,7 @@
                 <button class="tab-btn" data-target="tab-people" title="Cư dân">Cư Dân</button>
                 <button class="tab-btn" data-target="tab-tribe" title="Bộ lạc">Bộ Lạc</button>
                 <button class="tab-btn" data-target="tab-kingdom" title="Vương quốc">V.Quốc</button>
+                <button class="tab-btn" data-target="tab-civ" title="Văn minh">V.Minh</button>
                 <button class="tab-btn" data-target="tab-religion" title="Tôn giáo">Tôn Giáo</button>
                 <button class="tab-btn" data-target="tab-tech" title="Công nghệ">K.Học</button>
                 <button class="tab-btn" data-target="tab-env" title="Môi trường">T.Tiết</button>
@@ -367,6 +410,12 @@
                     <ul id="kingdom-list" class="list-view" style="flex:1;"></ul>
                 </div>
 
+                <!-- Civilization Tab -->
+                <div id="tab-civ" class="tab-pane">
+                    <h3 class="gold-text">Sự Tiến Hóa Văn Minh</h3>
+                    <ul id="civ-list" class="list-view" style="flex:1;"></ul>
+                </div>
+
                 <!-- Religion Tab -->
                 <div id="tab-religion" class="tab-pane">
                     <h3 class="gold-text">Các Tôn Giáo</h3>
@@ -375,9 +424,22 @@
 
                 <!-- Tech Tab -->
                 <div id="tab-tech" class="tab-pane">
-                    <h3 class="blue-text">Công Nghệ Toàn Cầu</h3>
-                    <p><strong>Nghiên cứu trung bình:</strong> <span id="tech-avg-pts"></span></p>
-                    <ul id="global-tech-list" class="list-view" style="flex:1;"></ul>
+                    <h3 class="blue-text" style="margin-bottom:10px;">Cây Công Nghệ Thế Giới</h3>
+                    
+                    <div class="accordion" style="margin-bottom:10px;">
+                        <div class="acc-header">Thống kê & Xếp hạng</div>
+                        <div class="acc-content" style="display:block;">
+                            <p><strong>Nghiên cứu trung bình:</strong> <span id="tech-avg-pts"></span></p>
+                            <p><strong>Quốc gia dẫn đầu:</strong> <span id="tech-leader"></span></p>
+                            <ul id="tech-ranking-list" class="list-view" style="max-height:100px; overflow-y:auto; margin-top:5px;"></ul>
+                        </div>
+                    </div>
+                    
+                    <h4 class="gold-text" style="margin-bottom:5px;">Tiến trình nghiên cứu</h4>
+                    <ul id="global-tech-list" class="list-view" style="flex:1; max-height:200px; overflow-y:auto; margin-bottom:10px;"></ul>
+                    
+                    <h4 class="blue-text" style="margin-bottom:5px;">Công nghệ hiện có</h4>
+                    <ul id="tech-tree-display" class="list-view" style="flex:1; max-height:200px; overflow-y:auto;"></ul>
                 </div>
 
                 <!-- Env Tab -->

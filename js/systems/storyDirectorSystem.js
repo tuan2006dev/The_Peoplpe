@@ -261,17 +261,45 @@ function triggerGreatMigration() {
 
 // --- MAIN LOOP ---
 
+function triggerFactoryAccident() {
+    createStoryEvent('Factory Accident', `Tai nạn nhà máy`, `Một vụ nổ lò hơi đã xảy ra tại khu công nghiệp, gây ra sự gián đoạn sản xuất lớn.`, 'MAJOR');
+}
+function triggerLaborStrike() {
+    createStoryEvent('Labor Strike', `Đình công`, `Công nhân ở các nhà máy đồng loạt đình công đòi tăng lương và cải thiện điều kiện làm việc.`, 'MAJOR');
+}
+function triggerGlobalPandemic() {
+    createStoryEvent('Global Pandemic', `Đại dịch toàn cầu`, `Một loại virus lạ đang lây lan nhanh chóng qua các đô thị hiện đại.`, 'WORLD_CHANGING');
+}
+function triggerEconomicBoom() {
+    createStoryEvent('Economic Boom', `Bùng nổ kinh tế`, `Sự phát triển mạnh mẽ của công nghệ y tế và giáo dục mang lại thời kỳ hoàng kim cho nền kinh tế.`, 'MAJOR');
+}
+function triggerAIResearch() {
+    createStoryEvent('AI Research', `Cách mạng AI`, `Một siêu máy tính trí tuệ nhân tạo vừa được khởi động, mở ra kỷ nguyên số hóa mới.`, 'MAJOR');
+}
+function triggerInformationRevolution() {
+    createStoryEvent('Information Revolution', `Bùng nổ thông tin`, `Mạng lưới kết nối toàn cầu đã đưa hàng triệu người tới kho kiến thức vô tận.`, 'MAJOR');
+}
+function triggerMoonMission() {
+    createStoryEvent('Moon Mission', `Sứ mệnh Không gian`, `Tên lửa đầu tiên đã cất cánh mang theo các phi hành gia vượt ra khỏi bầu khí quyển.`, 'LEGENDARY');
+}
+function triggerMarsExpedition() {
+    createStoryEvent('Mars Expedition', `Khai phá Vũ trụ`, `Tàu vũ trụ mang theo những nhà tiên phong đang hướng tới không gian sâu thẳm.`, 'WORLD_CHANGING');
+}
+
 export function updateStoryDirector() {
     // 1. Calculate Score
     state.worldDramaScore = calculateDramaScore();
     
-    // 2. Chance to trigger event based on score
+    // 2. Find highest civilization level
+    let highestCivLvl = 1;
+    state.kingdoms.forEach(k => { if (k.civilizationLevel > highestCivLvl) highestCivLvl = k.civilizationLevel; });
+
+    // 3. Chance to trigger event based on score
     let triggerChance = 0.1 + (state.worldDramaScore / 200); // 10% to 60% chance every 30 days
     
     if (Math.random() < triggerChance) {
         let events = [];
         
-        // Pick event category based on score
         if (state.worldDramaScore < 20) {
             events = [triggerGoldenChild, triggerGreatExplorer, triggerLostCivilization];
         } else if (state.worldDramaScore < 60) {
@@ -279,8 +307,13 @@ export function updateStoryDirector() {
         } else {
             events = [triggerBetrayal, triggerHeroRises, triggerAssassination, triggerGreatMigration];
         }
+
+        // Add Era specific events
+        if (highestCivLvl >= 6) events.push(triggerFactoryAccident, triggerLaborStrike);
+        if (highestCivLvl >= 7) events.push(triggerGlobalPandemic, triggerEconomicBoom);
+        if (highestCivLvl >= 8) events.push(triggerAIResearch, triggerInformationRevolution);
+        if (highestCivLvl >= 9) events.push(triggerMoonMission, triggerMarsExpedition);
         
-        // Execute random event from pool
         let selectedEvent = events[Math.floor(Math.random() * events.length)];
         selectedEvent();
     }

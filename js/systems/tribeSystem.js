@@ -4,6 +4,24 @@ import { TRIBE_COLORS } from '../config.js';
 import { AGES } from '../data/constants.js';
 import { logEvent, addWorldEvent } from './historySystem.js';
 import { PRODUCTION_CHAINS } from '../data/resources.js';
+import { initializeTribeDiplomacy } from './diplomacySystem.js';
+
+export function cleanupRemovedTribe(deadTribeId) {
+    state.tribes.forEach(t => {
+        if (t.relations) delete t.relations[deadTribeId];
+        if (t.diplomaticStatus) delete t.diplomaticStatus[deadTribeId];
+        if (t.diplomacy) delete t.diplomacy[deadTribeId];
+        if (t.truceCooldowns) delete t.truceCooldowns[deadTribeId];
+        if (t.relationTimers) delete t.relationTimers[deadTribeId];
+    });
+    state.kingdoms.forEach(k => {
+        k.tribeIds = k.tribeIds.filter(id => id !== deadTribeId);
+    });
+    state.npcs.forEach(n => {
+        if (n.tribeId === deadTribeId) n.tribeId = null;
+    });
+    if (state.selectedTribeId === deadTribeId) state.selectedTribeId = null;
+}
 
 export function updateTribeLogic() {
     let allUnaffiliated = state.npcs.filter(n => !n.tribeId);
@@ -42,6 +60,7 @@ export function updateTribeLogic() {
                 }
             });
             state.tribes.push(tribe);
+            initializeTribeDiplomacy(tribe);
             state.buildings.push({ id: ++state.buildingIdCounter, type: 'campfire', x: leader.x, y: leader.y, tribeId: tId });
             
             logEvent(`Bộ lạc ${tName} đã được thành lập từ ${nearbyHouses.length} lều cỏ!`); 
@@ -111,6 +130,8 @@ export function updateTribeLogic() {
                     // Try to expand 3 tiles per tick if possible
                     for(let step=0; step<3; step++) {
                         if(t.borderQueue.length === 0) break;
+                        // Sắp xếp ưu tiên ô gần trung tâm nhất để tạo lãnh thổ hình khối đặc (blob-like)
+                        t.borderQueue.sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y));
                         let cell = t.borderQueue.shift();
                         let neighbors = [ {x: cell.x+1, y: cell.y}, {x: cell.x-1, y: cell.y}, {x: cell.x, y: cell.y+1}, {x: cell.x, y: cell.y-1} ];
                         let stillHasSpace = false;
@@ -141,5 +162,21 @@ export function updateTribeLogic() {
                 }
             });
         });
+    }
+    
+    // --- CLEANUP GHOST TRIBES ---
+    for (let i = state.tribes.length - 1; i >= 0; i--) {
+        let t = state.tribes[i];
+        if (t.population === 0) {
+            if (t.territoryTiles) {
+                t.territoryTiles.forEach(tile => {
+                    if (state.territoryGrid[tile.x] && state.territoryGrid[tile.x][tile.y] === t.id) {
+                        state.territoryGrid[tile.x][tile.y] = null;
+                    }
+                });
+            }
+            cleanupRemovedTribe(t.id);
+            state.tribes.splice(i, 1);
+        }
     }
 }

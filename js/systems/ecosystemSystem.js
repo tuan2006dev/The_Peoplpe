@@ -99,10 +99,14 @@ export function updateEcosystem() {
         let r = allowed[Math.floor(Math.random() * allowed.length)];
         let x = Math.floor(Math.random() * COLS);
         let y = Math.floor(Math.random() * ROWS);
-        if (state.grid[x] && state.grid[x][y] !== TERRAIN.NUOC || r.terrainAffinity.includes(TERRAIN.NUOC)) {
+        if (state.grid[x] && (state.grid[x][y] !== TERRAIN.NUOC || (r.terrainAffinity && r.terrainAffinity.includes(TERRAIN.NUOC)))) {
             spawnAnimal(x, y, r.id);
-            spawnAnimal(x + (Math.random()*2-1), y + (Math.random()*2-1), r.id);
-            state.animals[state.animals.length-1].gender = state.animals[state.animals.length-2].gender === 'male' ? 'female' : 'male';
+            let nx = Math.max(0, Math.min(COLS - 1, x + (Math.random()*2-1)));
+            let ny = Math.max(0, Math.min(ROWS - 1, y + (Math.random()*2-1)));
+            spawnAnimal(nx, ny, r.id);
+            if (state.animals.length >= 2) {
+                state.animals[state.animals.length-1].gender = state.animals[state.animals.length-2].gender === 'male' ? 'female' : 'male';
+            }
         }
     }
 

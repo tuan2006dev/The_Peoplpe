@@ -1,5 +1,6 @@
 import { state } from '../gameState.js';
 import { STATES, ROUTINES } from '../data/constants.js';
+import { getTribeFood, getTribeHousingCap } from '../utils.js';
 
 export function updatePlanning(npc) {
     if (npc.actionWait > 0) return; // Busy
@@ -77,7 +78,15 @@ function getFamilyScore(npc) {
     let score = 10;
     if (npc.dailyRoutine === ROUTINES.AFTERNOON || npc.dailyRoutine === ROUTINES.EVENING) score += 30;
     if (npc.lifeGoal === "Có gia đình lớn") score += 40;
-    if (npc.reproductionCooldown <= 0 && npc.age >= 18 && npc.age < 50) score += 50; // Ready to have a child
+    if (npc.reproductionCooldown <= 0 && npc.age >= 16 && npc.age < 50) score += 50;
+    if (npc.hunger > 60) score -= 80;
+    if (npc.tribeId) {
+        let t = state.tribes.find(tr => tr.id === npc.tribeId);
+        if (t) {
+            if (getTribeFood(t) < t.population) score -= 60;
+            if (t.population >= getTribeHousingCap(t.id)) score -= 100;
+        }
+    }
     return score;
 }
 
